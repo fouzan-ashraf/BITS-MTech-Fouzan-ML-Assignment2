@@ -19,10 +19,14 @@ from xgboost import XGBClassifier
 # --- Page Configuration ---
 st.set_page_config(page_title="Machine Learning Assignment-2 : Fouzan Ashraf", layout="wide")
 
-# --- Student Information (Top Left Header) ---
-st.sidebar.markdown("### FOUZAN ASHRAF (2025AB05236)")
-st.sidebar.caption("Release Date: 13-02-2026")
-st.sidebar.markdown("---")
+# --- STUDENT INFORMATION (Header Section) ---
+# Displaying at the top left of the main page
+col_header, col_empty = st.columns([1, 2])
+with col_header:
+    st.markdown("### FOUZAN ASHRAF (2025AB05236)")
+    st.caption("Release Date: 13-02-2026")
+
+st.markdown("---")
 
 # --- Main Title ---
 st.title("Machine Learning Assignment-2 : Fouzan Ashraf")
@@ -32,12 +36,12 @@ st.markdown("---")
 
 # --- 1. Dataset Loading ---
 st.header("1. Data Configuration")
-data_source = st.radio("Select Data Source", ["Use Repository Dataset (data.csv)", "Upload Your Own CSV"], horizontal=True)
+data_source = st.radio("Select Data Source", ["Upload Your Own CSV", "Use Preloaded GitHub Repository Dataset (data.csv)"], horizontal=True)
 
 df = None
 
 # Logic to load data
-if data_source == "Use Repository Dataset (data.csv)":
+if data_source == "Use Preloaded GitHub Repository Dataset (data.csv)":
     try:
         # Check both potential locations (root or model folder)
         try:
@@ -46,7 +50,7 @@ if data_source == "Use Repository Dataset (data.csv)":
             df = pd.read_csv('data.csv')
         st.success("Dataset loaded successfully!")
     except FileNotFoundError:
-        st.error("Error: 'data.csv' not found in 'model/' or root directory.")
+        st.error("Error: 'data.csv' not found in 'model/' or root directory of the GitHub Repo.")
 elif data_source == "Upload Your Own CSV":
     uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
     if uploaded_file is not None:
@@ -114,7 +118,6 @@ if df is not None:
     with tab2:
         st.header("Train a Single Model")
         
-        # Sidebar Model Selection (Moved here for better flow)
         model_name = st.selectbox("Choose Classification Model", 
             ["Logistic Regression", "Decision Tree", "K-Nearest Neighbors (KNN)", 
              "Naive Bayes", "Random Forest", "XGBoost"])
@@ -139,20 +142,29 @@ if df is not None:
                 else:
                     y_prob = y_pred
 
-                # Metrics
+                # Metrics Calculation (All 6)
                 acc = accuracy_score(y_test, y_pred)
                 f1 = f1_score(y_test, y_pred, average='weighted')
                 auc = roc_auc_score(y_test, y_prob) if len(np.unique(y_test)) > 1 else 0.5
+                prec = precision_score(y_test, y_pred, average='weighted')
+                rec = recall_score(y_test, y_pred, average='weighted')
+                mcc = matthews_corrcoef(y_test, y_pred)
                 
                 st.success(f"Training completed in {train_time:.4f} seconds")
                 
-                # Metrics Display
-                col_m1, col_m2, col_m3 = st.columns(3)
-                col_m1.metric("Accuracy", f"{acc:.4f}")
-                col_m2.metric("F1 Score", f"{f1:.4f}")
-                col_m3.metric("AUC Score", f"{auc:.4f}")
+                # Metrics Display (All 6)
+                st.subheader("Evaluation Metrics")
+                m1, m2, m3 = st.columns(3)
+                m4, m5, m6 = st.columns(3)
                 
-                # Visualizations for Individual Model
+                m1.metric("Accuracy", f"{acc:.4f}")
+                m2.metric("AUC Score", f"{auc:.4f}")
+                m3.metric("F1 Score", f"{f1:.4f}")
+                m4.metric("Precision", f"{prec:.4f}")
+                m5.metric("Recall", f"{rec:.4f}")
+                m6.metric("MCC Score", f"{mcc:.4f}")
+                
+                # Visualizations
                 st.subheader("Model Visualization")
                 c1, c2 = st.columns(2)
                 with c1:
@@ -221,13 +233,29 @@ if df is not None:
                 
                 # Comparison Visualization
                 st.subheader("Performance Comparison (Accuracy)")
-                
-                # Create Bar Chart
                 fig_comp, ax_comp = plt.subplots(figsize=(10, 5))
                 sns.barplot(x="Accuracy", y="Model", data=results_df, palette="viridis", ax=ax_comp)
                 plt.xlim(0.8, 1.0) # Zoom in to see differences
                 plt.title("Model Accuracy Comparison")
                 st.pyplot(fig_comp)
+
+                # --- GENERIC OBSERVATIONS ---
+                st.subheader("💡 Observations")
+                
+                # Find best model
+                best_acc_model = results_df.loc[results_df['Accuracy'].idxmax()]
+                best_auc_model = results_df.loc[results_df['AUC'].idxmax()]
+                
+                st.info(f"""
+                **Automated Analysis:**
+                * The model with the highest **Accuracy** is **{best_acc_model['Model']}** ({best_acc_model['Accuracy']:.4f}).
+                * The model with the highest **AUC Score** is **{best_auc_model['Model']}** ({best_auc_model['AUC']:.4f}).
+                
+                **General Insights:**
+                * **Logistic Regression & Naive Bayes** typically perform very well on this dataset because the features are well-separated and follow a Gaussian distribution.
+                * **Ensemble Models (Random Forest / XGBoost)** are robust and usually provide top-tier performance by reducing variance.
+                * **Decision Trees** often show slightly lower performance due to overfitting on small datasets unless heavily pruned.
+                """)
                 
                 st.success("Comparison Complete!")
 
