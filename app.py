@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, learning_curve
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import (accuracy_score, roc_auc_score, precision_score, 
                              recall_score, f1_score, matthews_corrcoef, 
@@ -19,245 +19,185 @@ from xgboost import XGBClassifier
 # --- Page Configuration ---
 st.set_page_config(page_title="Machine Learning Assignment-2 : Fouzan Ashraf", layout="wide")
 
-# --- STUDENT INFORMATION (Header Section) ---
-# Displaying at the top left of the main page
-col_header, col_empty = st.columns([1, 2])
-with col_header:
-    st.markdown("### FOUZAN ASHRAF (2025AB05236)")
-    st.caption("Release Date: 13-02-2026")
+# --- CUSTOM UI STYLING (CSS) ---
+st.markdown("""
+    <style>
+    /* Make Tabs bigger and more appealing */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 60px;
+        white-space: pre-wrap;
+        background-color: #f0f2f6;
+        border-radius: 10px 10px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-weight: bold;
+        font-size: 18px;
+        color: #31333F;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #4e73df !important;
+        color: white !important;
+    }
+    /* Compact Header Styling */
+    .header-text {
+        font-size: 14px !important;
+        font-weight: 500;
+        color: #5a5c69;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
+# --- 1. HORIZONTAL HEADER ---
+h_col1, h_col2, h_col3 = st.columns([2, 2, 1])
+with h_col1:
+    st.markdown('<p class="header-text">👤 <b>Name:</b> FOUZAN ASHRAF</p>', unsafe_allow_html=True)
+with h_col2:
+    st.markdown('<p class="header-text">🆔 <b>BITS ID:</b> 2025AB05236</p>', unsafe_allow_html=True)
+with h_col3:
+    st.markdown('<p class="header-text">📅 <b>Date:</b> 13-02-2026</p>', unsafe_allow_html=True)
 st.markdown("---")
 
 # --- Main Title ---
 st.title("Machine Learning Assignment-2 : Fouzan Ashraf")
-st.markdown("### Classification Model Deployment & Evaluation")
-st.markdown("This application implements 6 classification models to predict breast cancer diagnosis (Malignant vs Benign).")
-st.markdown("---")
 
-# --- 1. Dataset Loading ---
-st.header("1. Data Configuration")
+# --- 2. DATA LOADING ---
 data_source = st.radio("Select Data Source", ["Upload Your Own CSV", "Use Preloaded GitHub Repository Dataset (data.csv)"], horizontal=True)
-
 df = None
 
-# Logic to load data
 if data_source == "Use Preloaded GitHub Repository Dataset (data.csv)":
     try:
-        # Check both potential locations (root or model folder)
-        try:
-            df = pd.read_csv('model/data.csv')
-        except FileNotFoundError:
-            df = pd.read_csv('data.csv')
+        try: df = pd.read_csv('model/data.csv')
+        except: df = pd.read_csv('data.csv')
         st.success("Dataset loaded successfully!")
-    except FileNotFoundError:
-        st.error("Error: 'data.csv' not found in 'model/' or root directory of the GitHub Repo.")
+    except: st.error("Dataset 'data.csv' not found.")
 elif data_source == "Upload Your Own CSV":
     uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
-        st.success("Uploaded dataset loaded successfully!")
 
-# --- 2. Main Application Logic ---
+# --- 3. APP LOGIC ---
 if df is not None:
-    # --- Preprocessing (Common for all modes) ---
-    # Cleanup
+    # Preprocessing
     if 'id' in df.columns: df = df.drop(columns=['id'])
     if 'Unnamed: 32' in df.columns: df = df.drop(columns=['Unnamed: 32'])
-
-    # Target Selection
+    
     target_options = df.columns.tolist()
     default_target = 'diagnosis' if 'diagnosis' in target_options else target_options[-1]
-    
-    with st.expander("Data Settings"):
-        target_col = st.selectbox("Select Target Column", target_options, index=target_options.index(default_target))
+    target_col = st.sidebar.selectbox("🎯 Set Target Column", target_options, index=target_options.index(default_target))
     
     X = df.drop(columns=[target_col])
     y = df[target_col]
-
-    # Encoding
     le = LabelEncoder()
-    try:
-        y = le.fit_transform(y)
-    except:
-        pass # Already numeric
+    try: y = le.fit_transform(y)
+    except: pass
 
-    # Train-Test Split & Scaling
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # --- TABS Interface ---
-    tab1, tab2, tab3 = st.tabs(["📊 Data Analysis", "⚙️ Train Individual Model", "🏆 Compare All Models"])
+    # --- 4. TABS INTERFACE ---
+    tab1, tab2, tab3 = st.tabs(["📊 Data Analysis", "⚙️ Select Model to Train", "🏆 Compare all Model"])
 
-    # ==========================================
     # TAB 1: DATA ANALYSIS
-    # ==========================================
     with tab1:
-        st.header("Exploratory Data Analysis")
-        col1, col2 = st.columns([1, 2])
+        st.subheader("Detailed Dataset Statistics")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Rows", df.shape[0])
+        c2.metric("Total Columns", df.shape[1])
+        c3.metric("Missing Values", df.isnull().sum().sum())
+        c4.metric("Duplicate Rows", df.duplicated().sum())
         
-        with col1:
-            st.write("Raw Data Preview:")
-            st.dataframe(df.head())
-            st.write(f"**Shape:** {df.shape}")
-        
-        with col2:
-            st.write("Target Distribution:")
-            fig, ax = plt.subplots(figsize=(6, 3))
-            sns.countplot(x=target_col, data=df, palette='viridis', ax=ax)
-            for p in ax.patches:
-                ax.annotate(f'{int(p.get_height())}', (p.get_x() + p.get_width() / 2., p.get_height()), 
-                            ha = 'center', va = 'center', xytext = (0, 9), 
-                            textcoords = 'offset points', fontweight='bold')
-            st.pyplot(fig)
+        st.markdown("### Data Preview & Correlation")
+        col_da1, col_da2 = st.columns([1, 1])
+        with col_da1:
+            st.write("**Dataset Head**")
+            st.dataframe(df.head(10))
+        with col_da2:
+            st.write("**Class Distribution**")
+            fig_dist, ax_dist = plt.subplots(figsize=(6, 4))
+            sns.countplot(x=target_col, data=df, palette='viridis', ax=ax_dist)
+            st.pyplot(fig_dist)
 
-    # ==========================================
-    # TAB 2: INDIVIDUAL MODEL TRAINING
-    # ==========================================
+    # TAB 2: SELECT MODEL TO TRAIN
     with tab2:
-        st.header("Train a Single Model")
+        model_name = st.selectbox("Select ML Model", ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"])
         
-        model_name = st.selectbox("Choose Classification Model", 
-            ["Logistic Regression", "Decision Tree", "K-Nearest Neighbors (KNN)", 
-             "Naive Bayes", "Random Forest", "XGBoost"])
-
-        # Initialize Model
         if model_name == "Logistic Regression": model = LogisticRegression()
         elif model_name == "Decision Tree": model = DecisionTreeClassifier(random_state=42)
-        elif model_name == "K-Nearest Neighbors (KNN)": model = KNeighborsClassifier(n_neighbors=5)
+        elif model_name == "KNN": model = KNeighborsClassifier(n_neighbors=5)
         elif model_name == "Naive Bayes": model = GaussianNB()
-        elif model_name == "Random Forest": model = RandomForestClassifier(n_estimators=100, random_state=42)
-        elif model_name == "XGBoost": model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
+        elif model_name == "Random Forest": model = RandomForestClassifier(random_state=42)
+        else: model = XGBClassifier(eval_metric='logloss', random_state=42)
 
-        if st.button(f"Train {model_name}", type="primary"):
-            with st.spinner("Training model..."):
-                start_time = time.time()
-                model.fit(X_train_scaled, y_train)
-                train_time = time.time() - start_time
-                
-                y_pred = model.predict(X_test_scaled)
-                if hasattr(model, "predict_proba"):
-                    y_prob = model.predict_proba(X_test_scaled)[:, 1]
-                else:
-                    y_prob = y_pred
+        if st.button(f"🚀 Execute {model_name} Training"):
+            start = time.time()
+            model.fit(X_train_scaled, y_train)
+            dur = time.time() - start
+            y_pred = model.predict(X_test_scaled)
+            y_prob = model.predict_proba(X_test_scaled)[:, 1] if hasattr(model, "predict_proba") else y_pred
 
-                # Metrics Calculation (All 6)
-                acc = accuracy_score(y_test, y_pred)
-                f1 = f1_score(y_test, y_pred, average='weighted')
-                auc = roc_auc_score(y_test, y_prob) if len(np.unique(y_test)) > 1 else 0.5
-                prec = precision_score(y_test, y_pred, average='weighted')
-                rec = recall_score(y_test, y_pred, average='weighted')
-                mcc = matthews_corrcoef(y_test, y_pred)
-                
-                st.success(f"Training completed in {train_time:.4f} seconds")
-                
-                # Metrics Display (All 6)
-                st.subheader("Evaluation Metrics")
-                m1, m2, m3 = st.columns(3)
-                m4, m5, m6 = st.columns(3)
-                
-                m1.metric("Accuracy", f"{acc:.4f}")
-                m2.metric("AUC Score", f"{auc:.4f}")
-                m3.metric("F1 Score", f"{f1:.4f}")
-                m4.metric("Precision", f"{prec:.4f}")
-                m5.metric("Recall", f"{rec:.4f}")
-                m6.metric("MCC Score", f"{mcc:.4f}")
-                
-                # Visualizations
-                st.subheader("Model Visualization")
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.write("**Confusion Matrix**")
-                    cm = confusion_matrix(y_test, y_pred)
-                    fig_cm, ax_cm = plt.subplots()
-                    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax_cm)
-                    st.pyplot(fig_cm)
-                with c2:
-                    st.write("**Classification Report**")
-                    report = classification_report(y_test, y_pred, output_dict=True)
-                    st.dataframe(pd.DataFrame(report).transpose().style.format("{:.4f}"))
+            st.success(f"Trained in {dur:.4f}s")
+            
+            # 6 Evaluation Metrics
+            m1, m2, m3, m4, m5, m6 = st.columns(6)
+            m1.metric("Accuracy", f"{accuracy_score(y_test, y_pred):.3f}")
+            m2.metric("AUC", f"{roc_auc_score(y_test, y_prob):.3f}")
+            m3.metric("Precision", f"{precision_score(y_test, y_pred):.3f}")
+            m4.metric("Recall", f"{recall_score(y_test, y_pred):.3f}")
+            m5.metric("F1", f"{f1_score(y_test, y_pred):.3f}")
+            m6.metric("MCC", f"{matthews_corrcoef(y_test, y_pred):.3f}")
 
-    # ==========================================
-    # TAB 3: DYNAMIC COMPARISON
-    # ==========================================
+            # Visualizations
+            st.markdown("---")
+            v1, v2 = st.columns(2)
+            with v1:
+                st.write("**Confusion Matrix**")
+                fig_cm, ax_cm = plt.subplots()
+                sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues')
+                st.pyplot(fig_cm)
+            with v2:
+                st.write("**Classification Report**")
+                st.dataframe(pd.DataFrame(classification_report(y_test, y_pred, output_dict=True)).T.style.format("{:.3f}"))
+            
+            # --- CONVERGENCE GRAPH (Learning Curve) ---
+            st.write("**Convergence Graph (Learning Curve)**")
+            
+            train_sizes, train_scores, test_scores = learning_curve(model, X_train_scaled, y_train, cv=5)
+            fig_lc, ax_lc = plt.subplots(figsize=(10, 4))
+            ax_lc.plot(train_sizes, np.mean(train_scores, axis=1), 'o-', label="Training Score")
+            ax_lc.plot(train_sizes, np.mean(test_scores, axis=1), 'o-', label="Cross-validation Score")
+            ax_lc.set_title(f"Convergence Graph: {model_name}")
+            ax_lc.set_xlabel("Training Examples"), ax_lc.set_ylabel("Score"), ax_lc.legend()
+            st.pyplot(fig_lc)
+
+    # TAB 3: COMPARE ALL MODELS
     with tab3:
-        st.header("Compare All Models")
-        st.write("Click the button below to train all models dynamically and compare their performance.")
-        
-        if st.button("🚀 Run Full Model Comparison", type="primary"):
-            with st.spinner("Training all 6 models... this may take a moment"):
-                
-                # Define all models
-                models = {
-                    "Logistic Regression": LogisticRegression(),
-                    "Decision Tree": DecisionTreeClassifier(random_state=42),
-                    "KNN": KNeighborsClassifier(n_neighbors=5),
-                    "Naive Bayes": GaussianNB(),
-                    "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
-                    "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
-                }
-                
-                results_list = []
-                
-                # Loop through and train
-                for name, clf in models.items():
-                    # Train
-                    clf.fit(X_train_scaled, y_train)
-                    
-                    # Predict
-                    y_pred_c = clf.predict(X_test_scaled)
-                    if hasattr(clf, "predict_proba"):
-                        y_prob_c = clf.predict_proba(X_test_scaled)[:, 1]
-                    else:
-                        y_prob_c = y_pred_c
-                        
-                    # Calculate Metrics
-                    res = {
-                        "Model": name,
-                        "Accuracy": accuracy_score(y_test, y_pred_c),
-                        "AUC": roc_auc_score(y_test, y_prob_c) if len(np.unique(y_test)) > 1 else 0.5,
-                        "Precision": precision_score(y_test, y_pred_c, average='weighted'),
-                        "Recall": recall_score(y_test, y_pred_c, average='weighted'),
-                        "F1 Score": f1_score(y_test, y_pred_c, average='weighted'),
-                        "MCC": matthews_corrcoef(y_test, y_pred_c)
-                    }
-                    results_list.append(res)
-                
-                # Create DataFrame
-                results_df = pd.DataFrame(results_list)
-                
-                # Display Leaderboard
-                st.subheader("🏆 Model Leaderboard")
-                st.dataframe(results_df.style.highlight_max(axis=0, color='lightgreen', subset=["Accuracy", "AUC", "F1 Score"]))
-                
-                # Comparison Visualization
-                st.subheader("Performance Comparison (Accuracy)")
-                fig_comp, ax_comp = plt.subplots(figsize=(10, 5))
-                sns.barplot(x="Accuracy", y="Model", data=results_df, palette="viridis", ax=ax_comp)
-                plt.xlim(0.8, 1.0) # Zoom in to see differences
-                plt.title("Model Accuracy Comparison")
-                st.pyplot(fig_comp)
-
-                # --- GENERIC OBSERVATIONS ---
-                st.subheader("💡 Observations")
-                
-                # Find best model
-                best_acc_model = results_df.loc[results_df['Accuracy'].idxmax()]
-                best_auc_model = results_df.loc[results_df['AUC'].idxmax()]
-                
-                st.info(f"""
-                **Automated Analysis:**
-                * The model with the highest **Accuracy** is **{best_acc_model['Model']}** ({best_acc_model['Accuracy']:.4f}).
-                * The model with the highest **AUC Score** is **{best_auc_model['Model']}** ({best_auc_model['AUC']:.4f}).
-                
-                **General Insights:**
-                * **Logistic Regression & Naive Bayes** typically perform very well on this dataset because the features are well-separated and follow a Gaussian distribution.
-                * **Ensemble Models (Random Forest / XGBoost)** are robust and usually provide top-tier performance by reducing variance.
-                * **Decision Trees** often show slightly lower performance due to overfitting on small datasets unless heavily pruned.
-                """)
-                
-                st.success("Comparison Complete!")
-
-else:
-    st.info("Please upload a CSV or ensure 'data.csv' is present to proceed.")
+        if st.button("🔥 Run All-Model Comparison"):
+            models = {
+                "Logistic Regression": LogisticRegression(),
+                "Decision Tree": DecisionTreeClassifier(),
+                "KNN": KNeighborsClassifier(),
+                "Naive Bayes": GaussianNB(),
+                "Random Forest": RandomForestClassifier(),
+                "XGBoost": XGBClassifier(eval_metric='logloss')
+            }
+            results = []
+            for name, m in models.items():
+                m.fit(X_train_scaled, y_train)
+                p = m.predict(X_test_scaled)
+                results.append({
+                    "Model": name, "Accuracy": accuracy_score(y_test, p),
+                    "AUC": roc_auc_score(y_test, m.predict_proba(X_test_scaled)[:, 1]) if hasattr(m, "predict_proba") else 0,
+                    "F1 Score": f1_score(y_test, p), "MCC": matthews_corrcoef(y_test, p)
+                })
+            res_df = pd.DataFrame(results)
+            st.dataframe(res_df.style.highlight_max(axis=0, color='lightgreen'))
+            
+            fig_comp, ax_comp = plt.subplots(figsize=(10, 5))
+            sns.barplot(x="Accuracy", y="Model", data=res_df, palette="viridis")
+            st.pyplot(fig_comp)
