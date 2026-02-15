@@ -102,6 +102,7 @@ with tab1:
     st.markdown("""
     **Dataset Details:**
     This dataset consists of 31 total features computed from a digitized image of a fine needle aspirate (FNA) of a breast mass. These features mathematically describe the characteristics of the cell nuclei present in the image, capturing 10 distinct traits (such as radius, texture, and area) across their mean, standard error, and 'worst' (largest) values, alongside the final diagnosis.
+    * **Dataset Source: Kaggle (https://www.kaggle.com/datasets/uciml/breast-cancer-wisconsin-data)
     * **Target Variable:** `diagnosis`
     * **Target Classes:** `M` = Malignant (Cancerous), `B` = Benign (Non-Cancerous)
     * **Key Features:** Radius, Texture, Perimeter, Area, Smoothness, Compactness, Concavity, Symmetry, and Fractal Dimension.
@@ -109,7 +110,7 @@ with tab1:
     
     st.subheader("Dataset Health & Statistics")
     s1, s2, s3, s4, s5 = st.columns(5)
-    s1.metric("Original Data Shape", f"{original_shape[0]} × {original_shape[1]}")
+    s1.metric("Original Data Shape", "569 × 32")
     s2.metric("Total Rows", df.shape[0])
     s3.metric("Total Features", df.shape[1] - 1, help="This count (30) excludes the target variable ('diagnosis') and non-predictive columns like 'id'.")
     s4.metric("Missing Values", df.isnull().sum().sum())
