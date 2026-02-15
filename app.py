@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 import os
-import streamlit.components.v1 as components
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (accuracy_score, roc_auc_score, precision_score, 
                              recall_score, f1_score, matthews_corrcoef, 
@@ -20,7 +19,6 @@ st.markdown("""
     /* 1. REMOVE TOP BLANK SPACE */
     .block-container {
         padding-top: 3rem !important;
-        padding-bottom: 1rem !important;
     }
     
     /* 2. TAB STYLING */
@@ -225,18 +223,6 @@ with tab2:
     models_to_test = ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"]
     inference_mode = st.radio("Select Inference Mode:", ["Evaluate Single Model", "Compare All Models"], horizontal=True)
 
-    # --- HELPER FUNCTION FOR AUTO-SCROLL ---
-    def scroll_to_bottom():
-        components.html(
-            """
-            <script>
-                var main = window.parent.document.querySelector('.main');
-                main.scrollTo({top: main.scrollHeight, behavior: 'smooth'});
-            </script>
-            """,
-            height=0
-        )
-
     # --- SINGLE MODEL EVALUATION / PREDICTION ---
     if inference_mode == "Evaluate Single Model":
         inf_model_name = st.selectbox("Select Model for Inference", models_to_test)
@@ -291,8 +277,6 @@ with tab2:
                             RocCurveDisplay.from_predictions(y_new, prob, ax=ax_roc, name=inf_model_name)
                             st.pyplot(fig_roc)
                             
-                            scroll_to_bottom() # Trigger auto-scroll
-
                     else:
                         # --- BLIND PREDICTION MODE ---
                         X_new_scaled = loaded_scaler.transform(new_test_df)
@@ -312,8 +296,6 @@ with tab2:
                             csv_preds = results_df.to_csv(index=False).encode('utf-8')
                             st.download_button(label="⬇️ Download Full Predictions as CSV", data=csv_preds, file_name=f"{safe_name}_predictions.csv", mime="text/csv")
                             
-                            scroll_to_bottom() # Trigger auto-scroll
-
                 except FileNotFoundError as e:
                     st.error(f"⚠️ Required pre-trained file not found. Ensure models and preprocessors exist in 'model/'. Error: {e}")
                     st.toast("File missing error.", icon="❌")
@@ -380,7 +362,5 @@ with tab2:
                             """
                             st.info(obs_text)
                             
-                            scroll_to_bottom() # Trigger auto-scroll
-
                 except FileNotFoundError:
                     st.error("⚠️ Preprocessor files ('scaler.pkl' or 'label_encoder.pkl') not found in 'model/' directory.")
