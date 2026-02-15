@@ -107,7 +107,7 @@ tab1, tab2 = st.tabs(["📊 Training Data Analysis", "🚀 Model Inference and E
 # ------------------------------------------
 with tab1:
     # --- NAVIGATION INSTRUCTION BANNER ---
-    st.info("👉 **Ready to test the models?** Click on the **'🚀 Model Inference and Evaluation'** tab to download/upload test data and perform evaluations or generate predictions.")
+    st.info("👉 **Ready to test the models?** Click on the **'🚀 Model Inference and Evaluation'** tab to download/upload test data and perform evaluations or predictions.")
 
     st.subheader("Training Data Used: Breast Cancer Wisconsin (Diagnostic) Dataset")
     st.markdown("""
