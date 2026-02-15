@@ -1,5 +1,7 @@
 # Machine Learning Classification Model Implementation, Demonstration and Comparison
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://2025ab05236-fouzan-ashraf.streamlit.app/)
+
 ## a. Problem Statement
 The objective of this assignment is to implement an end-to-end Machine Learning classification workflow. This involves:
 1.  Selecting a real-world classification dataset.
