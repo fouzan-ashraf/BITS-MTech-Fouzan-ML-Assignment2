@@ -96,20 +96,22 @@ tab1, tab2 = st.tabs(["📊 Training Data Analysis", "🚀 Model Inference and E
 # TAB 1: TRAINING DATA ANALYSIS
 # ------------------------------------------
 with tab1:
-    st.header("Breast Cancer Wisconsin (Diagnostic) Dataset")
+    st.subheader("Dataset Used: Breast Cancer Wisconsin (Diagnostic) Dataset")
     st.markdown("""
     **Dataset Details:**
     Features are computed from a digitized image of a fine needle aspirate (FNA) of a breast mass. They describe characteristics of the cell nuclei present in the image.
+    * **Target Variable:** `diagnosis`
     * **Target Classes:** `M` = Malignant (Cancerous), `B` = Benign (Non-Cancerous)
     * **Key Features:** Radius, Texture, Perimeter, Area, Smoothness, Compactness, Concavity, Symmetry, and Fractal Dimension.
     """)
     
     st.subheader("Dataset Health & Statistics")
-    s1, s2, s3, s4 = st.columns(4)
-    s1.metric("Total Rows", df.shape[0])
-    s2.metric("Total Features", df.shape[1] - 1)
-    s3.metric("Missing Values", df.isnull().sum().sum())
-    s4.metric("Duplicate Rows", df.duplicated().sum())
+    s1, s2, s3, s4, s5 = st.columns(5)
+    s1.metric("Original Data Shape", f"{df.shape[0]} × {df.shape[1]}")
+    s2.metric("Total Rows", df.shape[0])
+    s3.metric("Total Features", df.shape[1] - 1, help="This count (30) explicitly excludes the target variable ('diagnosis').")
+    s4.metric("Missing Values", df.isnull().sum().sum())
+    s5.metric("Duplicate Rows", df.duplicated().sum())
     
     st.markdown(f"**Target Class Distribution ({target_col}):**")
     class_counts = df[target_col].value_counts()
