@@ -18,7 +18,7 @@ st.markdown("""
     <style>
     /* 1. REMOVE TOP BLANK SPACE */
     .block-container {
-        padding-top: 4rem !important;
+        padding-top: 3rem !important;
         padding-bottom: 1rem !important;
     }
     
