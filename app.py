@@ -67,6 +67,8 @@ st.markdown("Machine Learning Assignment-2 : Fouzan Ashraf")
 try:
     try: df = pd.read_csv('model/data.csv')
     except: df = pd.read_csv('data.csv')
+
+    original_shape = df.shape
     
     # Cleanup & Split for deterministic test data generation
     if 'id' in df.columns: df = df.drop(columns=['id'])
@@ -107,9 +109,9 @@ with tab1:
     
     st.subheader("Dataset Health & Statistics")
     s1, s2, s3, s4, s5 = st.columns(5)
-    s1.metric("Original Data Shape", f"{df.shape[0]} × {df.shape[1]}")
+    s1.metric("Original Data Shape", f"{original_shape[0]} × {original_shape[1]}")
     s2.metric("Total Rows", df.shape[0])
-    s3.metric("Total Features", df.shape[1] - 1, help="This count (30) explicitly excludes the target variable ('diagnosis').")
+    s3.metric("Total Features", df.shape[1] - 1, help="This count (30) excludes the target variable ('diagnosis') and non-predictive columns like 'id'.")
     s4.metric("Missing Values", df.isnull().sum().sum())
     s5.metric("Duplicate Rows", df.duplicated().sum())
     
