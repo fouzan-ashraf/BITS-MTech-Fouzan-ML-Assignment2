@@ -63,14 +63,14 @@ st.markdown(f"""
         <div style="display: flex; justify-content: space-between;">
             <p class="header-text"><b>Name:</b> FOUZAN ASHRAF</p>
             <p class="header-text"><b>BITS ID:</b> 2025AB05236</p>
-            <p class="header-text"><b>Release Date:</b> 13-02-2026</p>
+            <p class="header-text"><b>Release Date:</b> 15-02-2026</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 # --- SHRINK TITLE TO FIT ONE LINE ---
-st.markdown("<h2 style='font-size: 32px; font-weight: bold; margin-bottom: 0px; padding-top: 0px;'>ML Classification Model Comparision - Breast Cancer Diagnostic</h2>", unsafe_allow_html=True)
-st.markdown("Machine Learning Assignment-2 : Fouzan Ashraf")
+st.markdown("<h2 style='font-size: 32px; font-weight: bold; margin-bottom: 0px; padding-top: 0px;'>Machine Learning Classification Model Comparision - Breast Cancer Diagnostic</h2>", unsafe_allow_html=True)
+st.markdown("Machine Learning Semester-1 Assignment-2 : Fouzan Ashraf")
 
 # --- DATA LOADING (For generating Test Data Download & Analysis) ---
 try:
