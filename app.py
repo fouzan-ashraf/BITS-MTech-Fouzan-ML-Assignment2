@@ -215,15 +215,24 @@ with tab2:
 
     # --- 3. RUN EVALUATION & PREDICTION (Always Visible) ---
     st.subheader("3. Run Evaluation / Predictions")
-    
+
+    # Determine dynamic label based on presence of target column
+    if new_test_df is not None and target_col not in new_test_df.columns:
+        single_model_label = "Predict Using Individual Models from Dropdown"
+    else:
+        single_model_label = "Evaluate Individual Models from Dropdown"
+
     if new_test_df is None:
         st.info("ℹ️ Please upload a dataset or select 'Load Test Data from GitHub' above to enable predictions.")
-        
+
     models_to_test = ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"]
-    inference_mode = st.radio("Select Inference Mode:", ["Evaluate Single Model", "Compare All Models"], horizontal=True)
+    
+    # Use the dynamic label in the radio button
+    inference_mode = st.radio("Select Inference Mode:", [single_model_label, "Compare All Models"], horizontal=True)
 
     # --- SINGLE MODEL EVALUATION / PREDICTION ---
-    if inference_mode == "Evaluate Single Model":
+    # Check against the dynamic label instead of a hardcoded string
+    if inference_mode == single_model_label:
         inf_model_name = st.selectbox("Select Model for Inference", models_to_test)
         if st.button("🧠 Run Inference", type="primary"):
             if new_test_df is None:
