@@ -3,10 +3,10 @@
 ## a. Problem Statement
 The objective of this assignment is to implement an end-to-end Machine Learning classification workflow. This involves:
 1.  Selecting a real-world classification dataset.
-2.  Implementing and training 6 different classification models (Logistic Regression, Decision Tree Classifier(DNN), K-Nearest Neighbor Classifier (KNN), Naive Bayes Classifier, Ensemble Model - Random Forest and Ensemble Model - XGBoost).
+2.  Implementing and training 6 different classification models (Logistic Regression, Decision Tree Classifier (DNN), K-Nearest Neighbor Classifier (KNN), Naive Bayes Classifier, Ensemble Model - Random Forest and Ensemble Model - XGBoost).
 3.  Evaluating models using standard metrics (Accuracy, Precision, Recall, F1 Score, AUC, MCC).
 4.  Developing an interactive web application using **Streamlit** to demonstrate the models.
-5.  Deploying the application to the Streamlit Community Cloud for public access.
+5.  Deploying the application to the **Streamlit Community Cloud** for public access.
 
 ## b. Dataset Description
 * **Dataset Name:** Breast Cancer Wisconsin (Diagnostic) Dataset
