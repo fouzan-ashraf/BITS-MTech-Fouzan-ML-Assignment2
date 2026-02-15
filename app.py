@@ -69,7 +69,7 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # --- SHRINK TITLE TO FIT ONE LINE ---
-st.markdown("<h2 style='font-size: 32px; font-weight: bold; margin-bottom: 0px; padding-top: 0px;'>Machine Learning Classification Model Comparision - Breast Cancer Diagnostic</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='font-size: 32px; font-weight: bold; margin-bottom: 0px; padding-top: 0px;'>Machine Learning Classification Model Comparison - Breast Cancer Diagnosis</h2>", unsafe_allow_html=True)
 
 # --- DATA LOADING (For generating Test Data Download & Analysis) ---
 try:
