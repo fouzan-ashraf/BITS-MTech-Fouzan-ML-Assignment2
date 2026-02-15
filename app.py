@@ -153,7 +153,7 @@ with tab2:
     st.info("""
     💡 **GUIDE: Evaluation Mode vs. Blind Prediction Mode**
     * **Evaluation Mode:** Upload test data *with* the `diagnosis` column. This allows the app to calculate Accuracy, AUC & other metrics and compare all 6 models against the true answers.
-    * **Blind Prediction Mode:** Upload unseen data *without* the `diagnosis` column. Use the **Predic Using Individual Models from Dropdown** option to make the AI generate actual predictions for the unknown data. 
+    * **Blind Prediction Mode:** Upload unseen data *without* the `diagnosis` column. Use the **Predict Using Individual Models from Dropdown** option to make the AI generate actual predictions for the unknown data. 
     *(Note: "Compare All Models" is automatically disabled for blind data, as metrics cannot be calculated without the ground truth).*
     """)
 
