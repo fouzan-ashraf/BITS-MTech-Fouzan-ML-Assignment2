@@ -134,109 +134,161 @@ with tab1:
         fig_dist, ax_dist = plt.subplots(figsize=(6, 4))
         sns.countplot(x=target_col, data=df, palette='viridis', ax=ax_dist)
         st.pyplot(fig_dist)
-
 # ------------------------------------------
 # TAB 2: MODEL INFERENCE AND EVALUATION
 # ------------------------------------------
 with tab2:
-    st.subheader("1. Download Holdout Test Data")
-    st.write("Download the unseen 20% test split to evaluate the pre-trained models.")
-    
-    csv_test = test_export_df.to_csv(index=False).encode('utf-8')
-    st.download_button(label="⬇️ Download test-data.csv", data=csv_test, file_name="test-data.csv", mime="text/csv")
-    
-    st.markdown("---")
-    st.subheader("2. Upload Test Data for Inference")
-    test_file = st.file_uploader("Upload your test-data.csv", type=["csv"], key="test_upload")
-    
-    if test_file is not None:
-        new_test_df = pd.read_csv(test_file)
-        st.success(f"Test data loaded! ({new_test_df.shape[0]} rows)")
+    st.subheader("1. Test Data Selection")
+    data_source_test = st.radio(
+        "Choose how to load test data:", 
+        ["Upload Custom Test Data", "Load Test Data from GitHub"],
+        horizontal=True
+    )
+
+    new_test_df = None
+
+    # --- OPTION A: UPLOAD CUSTOM DATA ---
+    if data_source_test == "Upload Custom Test Data":
+        st.write("Download the unseen 20% test split to evaluate the pre-trained models.")
+        csv_test = test_export_df.to_csv(index=False).encode('utf-8')
+        st.download_button(label="⬇️ Download test-data.csv", data=csv_test, file_name="test-data.csv", mime="text/csv")
+
+        st.markdown("---")
+        st.subheader("2. Upload Test Data for Inference")
+        test_file = st.file_uploader("Upload your test-data.csv", type=["csv"], key="test_upload")
+
+        if test_file is not None:
+            new_test_df = pd.read_csv(test_file)
+            st.success(f"Test data loaded successfully! ({new_test_df.shape[0]} rows)")
+
+    # --- OPTION B: LOAD FROM GITHUB ---
+    else:
+        st.markdown("---")
+        st.subheader("2. GitHub Test Data Details")
+        try:
+            # Attempts to load a physically saved test-data.csv if it exists in the repo
+            new_test_df = pd.read_csv('test-data.csv')
+            st.success(f"GitHub test data loaded successfully!")
+        except FileNotFoundError:
+            # Falls back to the dynamically generated test split if the file isn't physically committed yet
+            new_test_df = test_export_df.copy()
+            st.success("Default holdout test data generated from base dataset loaded!")
         
-        if target_col not in new_test_df.columns:
-            st.error(f"Dataset must contain target column: '{target_col}'")
-        else:
-            try:
-                # LOAD PREPROCESSORS
-                loaded_scaler = joblib.load('model/scaler.pkl')
-                loaded_le = joblib.load('model/label_encoder.pkl')
-                
-                # PREPARE DATA
-                X_new = new_test_df.drop(columns=[target_col])
-                y_new_raw = new_test_df[target_col]
-                y_new = loaded_le.transform(y_new_raw)
-                X_new_scaled = loaded_scaler.transform(X_new)
-                
-                models_to_test = ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"]
-                
-                st.markdown("### 3. Run Evaluation")
-                inference_mode = st.radio("Select Inference Mode:", ["Evaluate Single Model", "Compare All Models"], horizontal=True)
-                
-                # --- SINGLE MODEL EVALUATION ---
-                if inference_mode == "Evaluate Single Model":
-                    inf_model_name = st.selectbox("Select Model for Inference", models_to_test)
-                    if st.button("🧠 Run Inference", type="primary"):
-                        safe_name = inf_model_name.replace(" ", "_")
-                        try:
-                            loaded_model = joblib.load(f'model/{safe_name}_model.pkl')
-                            with st.spinner("Predicting..."):
-                                p = loaded_model.predict(X_new_scaled)
-                                prob = loaded_model.predict_proba(X_new_scaled)[:, 1] if hasattr(loaded_model, "predict_proba") else p
-                                
-                                st.markdown(f"#### Results for {inf_model_name}")
-                                m1, m2, m3, m4, m5, m6 = st.columns(6)
-                                m1.metric("Accuracy", f"{accuracy_score(y_new, p):.4f}")
-                                m2.metric("AUC", f"{roc_auc_score(y_new, prob):.4f}")
-                                m3.metric("Precision", f"{precision_score(y_new, p, average='weighted', zero_division=0):.4f}")
-                                m4.metric("Recall", f"{recall_score(y_new, p, average='weighted', zero_division=0):.4f}")
-                                m5.metric("F1 Score", f"{f1_score(y_new, p, average='weighted'):.4f}")
-                                m6.metric("MCC Score", f"{matthews_corrcoef(y_new, p):.4f}")
-                                
-                                v1, v2 = st.columns(2)
-                                with v1:
-                                    st.write("**Confusion Matrix**")
-                                    fig_cm_new, ax_cm_new = plt.subplots(figsize=(4, 3))
-                                    sns.heatmap(confusion_matrix(y_new, p), annot=True, fmt='d', cmap='Blues', ax=ax_cm_new)
-                                    st.pyplot(fig_cm_new)
-                                with v2:
-                                    st.write("**Classification Report**")
-                                    st.dataframe(pd.DataFrame(classification_report(y_new, p, target_names=loaded_le.classes_, output_dict=True)).T.style.format("{:.4f}"))
-                                    
-                        except FileNotFoundError:
-                            st.error(f"⚠️ Pre-trained model 'model/{safe_name}_model.pkl' not found.")
+        # Display details about the loaded GitHub data
+        st.write(f"**Total Rows:** {new_test_df.shape[0]}")
+        st.write(f"**Total Columns:** {new_test_df.shape[1]}")
+        
+        st.write("**Test Data Preview:**")
+        st.dataframe(new_test_df.head(5), use_container_width=True)
 
-                # --- ALL MODELS COMPARISON ---
-                else:
-                    if st.button("🔥 Run All-Model Comparison", type="primary"):
-                        inf_results = []
-                        with st.spinner("Loading .pkl files and evaluating..."):
-                            for name in models_to_test:
-                                safe_name = name.replace(" ", "_")
-                                try:
-                                    loaded_m = joblib.load(f'model/{safe_name}_model.pkl')
-                                    p = loaded_m.predict(X_new_scaled)
-                                    prob = loaded_m.predict_proba(X_new_scaled)[:, 1] if hasattr(loaded_m, "predict_proba") else p
-                                    
-                                    inf_results.append({
-                                        "Model": name, "Accuracy": accuracy_score(y_new, p), "AUC": roc_auc_score(y_new, prob), 
-                                        "Precision": precision_score(y_new, p, average='weighted', zero_division=0),
-                                        "Recall": recall_score(y_new, p, average='weighted', zero_division=0),
-                                        "F1 Score": f1_score(y_new, p, average='weighted'), "MCC": matthews_corrcoef(y_new, p)
-                                    })
-                                except FileNotFoundError:
-                                    st.warning(f"⚠️ {name} model not found in model/. Skipping.")
-                            
-                            if inf_results:
-                                res_df_new = pd.DataFrame(inf_results)
-                                st.subheader("🏆 Inference Leaderboard")
-                                st.dataframe(res_df_new.style.highlight_max(axis=0, color='lightgreen').format(
-                                    {"Accuracy": "{:.4f}", "AUC": "{:.4f}", "Precision": "{:.4f}", 
-                                     "Recall": "{:.4f}", "F1 Score": "{:.4f}", "MCC": "{:.4f}"}), use_container_width=True)
-                                
-                                fig_bar, ax_bar = plt.subplots(figsize=(10, 4))
-                                sns.barplot(x="Accuracy", y="Model", data=res_df_new, palette="viridis")
-                                plt.title("Model Accuracy on Unseen Test Data")
-                                st.pyplot(fig_bar)
+    st.markdown("---")
+    
+    # --- 3. RUN EVALUATION (Always Visible) ---
+    st.subheader("3. Run Evaluation / Predictions")
+    
+    if new_test_df is None:
+        st.info("ℹ️ Please upload a test dataset or select 'Load Test Data from GitHub' above to enable predictions.")
+        
+    models_to_test = ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"]
+    inference_mode = st.radio("Select Inference Mode:", ["Evaluate Single Model", "Compare All Models"], horizontal=True)
 
-            except FileNotFoundError:
-                st.error("⚠️ Preprocessor files ('scaler.pkl' or 'label_encoder.pkl') not found in 'model/' directory.")
+    # --- SINGLE MODEL EVALUATION ---
+    if inference_mode == "Evaluate Single Model":
+        inf_model_name = st.selectbox("Select Model for Inference", models_to_test)
+        if st.button("🧠 Run Inference", type="primary"):
+            if new_test_df is None:
+                st.warning("⚠️ Cannot run evaluation. Please provide test data first.")
+            elif target_col not in new_test_df.columns:
+                st.error(f"⚠️ Dataset must contain target column: '{target_col}'")
+            else:
+                try:
+                    # LOAD PREPROCESSORS
+                    loaded_scaler = joblib.load('model/scaler.pkl')
+                    loaded_le = joblib.load('model/label_encoder.pkl')
+
+                    # PREPARE DATA
+                    X_new = new_test_df.drop(columns=[target_col])
+                    y_new_raw = new_test_df[target_col]
+                    y_new = loaded_le.transform(y_new_raw)
+                    X_new_scaled = loaded_scaler.transform(X_new)
+
+                    safe_name = inf_model_name.replace(" ", "_")
+                    loaded_model = joblib.load(f'model/{safe_name}_model.pkl')
+                    
+                    with st.spinner("Predicting..."):
+                        p = loaded_model.predict(X_new_scaled)
+                        prob = loaded_model.predict_proba(X_new_scaled)[:, 1] if hasattr(loaded_model, "predict_proba") else p
+
+                        st.markdown(f"#### Results for {inf_model_name}")
+                        m1, m2, m3, m4, m5, m6 = st.columns(6)
+                        m1.metric("Accuracy", f"{accuracy_score(y_new, p):.4f}")
+                        m2.metric("AUC", f"{roc_auc_score(y_new, prob):.4f}")
+                        m3.metric("Precision", f"{precision_score(y_new, p, average='weighted', zero_division=0):.4f}")
+                        m4.metric("Recall", f"{recall_score(y_new, p, average='weighted', zero_division=0):.4f}")
+                        m5.metric("F1 Score", f"{f1_score(y_new, p, average='weighted'):.4f}")
+                        m6.metric("MCC Score", f"{matthews_corrcoef(y_new, p):.4f}")
+
+                        v1, v2 = st.columns(2)
+                        with v1:
+                            st.write("**Confusion Matrix**")
+                            fig_cm_new, ax_cm_new = plt.subplots(figsize=(4, 3))
+                            sns.heatmap(confusion_matrix(y_new, p), annot=True, fmt='d', cmap='Blues', ax=ax_cm_new)
+                            st.pyplot(fig_cm_new)
+                        with v2:
+                            st.write("**Classification Report**")
+                            st.dataframe(pd.DataFrame(classification_report(y_new, p, target_names=loaded_le.classes_, output_dict=True)).T.style.format("{:.4f}"))
+
+                except FileNotFoundError as e:
+                    st.error(f"⚠️ Required pre-trained file not found. Ensure models and preprocessors exist in 'model/'. Error: {e}")
+
+    # --- ALL MODELS COMPARISON ---
+    else:
+        if st.button("🔥 Run All-Model Comparison", type="primary"):
+            if new_test_df is None:
+                st.warning("⚠️ Cannot run evaluation. Please provide test data first.")
+            elif target_col not in new_test_df.columns:
+                st.error(f"⚠️ Dataset must contain target column: '{target_col}'")
+            else:
+                inf_results = []
+                try:
+                    # LOAD PREPROCESSORS
+                    loaded_scaler = joblib.load('model/scaler.pkl')
+                    loaded_le = joblib.load('model/label_encoder.pkl')
+
+                    # PREPARE DATA
+                    X_new = new_test_df.drop(columns=[target_col])
+                    y_new_raw = new_test_df[target_col]
+                    y_new = loaded_le.transform(y_new_raw)
+                    X_new_scaled = loaded_scaler.transform(X_new)
+
+                    with st.spinner("Loading .pkl files and evaluating..."):
+                        for name in models_to_test:
+                            safe_name = name.replace(" ", "_")
+                            try:
+                                loaded_m = joblib.load(f'model/{safe_name}_model.pkl')
+                                p = loaded_m.predict(X_new_scaled)
+                                prob = loaded_m.predict_proba(X_new_scaled)[:, 1] if hasattr(loaded_m, "predict_proba") else p
+
+                                inf_results.append({
+                                    "Model": name, "Accuracy": accuracy_score(y_new, p), "AUC": roc_auc_score(y_new, prob),
+                                    "Precision": precision_score(y_new, p, average='weighted', zero_division=0),
+                                    "Recall": recall_score(y_new, p, average='weighted', zero_division=0),
+                                    "F1 Score": f1_score(y_new, p, average='weighted'), "MCC": matthews_corrcoef(y_new, p)
+                                })
+                            except FileNotFoundError:
+                                st.warning(f"⚠️ {name} model not found in model/. Skipping.")
+
+                        if inf_results:
+                            res_df_new = pd.DataFrame(inf_results)
+                            st.subheader("🏆 Inference Leaderboard")
+                            st.dataframe(res_df_new.style.highlight_max(axis=0, color='lightgreen').format(
+                                {"Accuracy": "{:.4f}", "AUC": "{:.4f}", "Precision": "{:.4f}",
+                                 "Recall": "{:.4f}", "F1 Score": "{:.4f}", "MCC": "{:.4f}"}), use_container_width=True)
+
+                            fig_bar, ax_bar = plt.subplots(figsize=(10, 4))
+                            sns.barplot(x="Accuracy", y="Model", data=res_df_new, palette="viridis")
+                            plt.title("Model Accuracy on Unseen Test Data")
+                            st.pyplot(fig_bar)
+
+                except FileNotFoundError:
+                    st.error("⚠️ Preprocessor files ('scaler.pkl' or 'label_encoder.pkl') not found in 'model/' directory.")
