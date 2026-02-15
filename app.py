@@ -109,7 +109,7 @@ with tab1:
     # --- NAVIGATION INSTRUCTION BANNER ---
     st.info("👉 **Ready to test the models?** Click on the **'🚀 Model Inference and Evaluation'** tab to download/upload test data and perform evaluations or predictions.")
 
-    st.subheader("Training Data Used: Breast Cancer Wisconsin (Diagnostic) Dataset")
+    st.markdown("<h3><b>Training Data Used:</b> <span style='font-weight: normal;'>Breast Cancer Wisconsin (Diagnostic) Dataset</span></h3>", unsafe_allow_html=True)
     st.markdown("""
     **Dataset Details:**
     This dataset consists of 30 total features (excluding target variable "diagnosis" and non-predictive column like "id") computed from a digitized image of a fine needle aspirate (FNA) of a breast mass. These features mathematically describe the characteristics of the cell nuclei present in the image, capturing 10 distinct traits (such as radius, texture, and area) across their mean, standard error, and 'worst' (largest) values.
