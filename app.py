@@ -145,6 +145,7 @@ with tab1:
         fig_dist, ax_dist = plt.subplots(figsize=(6, 4))
         sns.countplot(x=target_col, data=df, palette='viridis', ax=ax_dist)
         st.pyplot(fig_dist)
+
 # ------------------------------------------
 # TAB 2: MODEL INFERENCE AND EVALUATION
 # ------------------------------------------
@@ -157,7 +158,30 @@ with tab2:
     *(Note: "Compare All Models" is automatically disabled for blind data, as metrics cannot be calculated without the ground truth).*
     """)
 
-    st.subheader("1. Test Data Selection")
+    # --- NEW FEATURE: BASELINE METRICS FROM TRAINING PHASE ---
+    st.subheader("1. Pre-Trained Models Baseline Performance")
+    with st.expander("🏆 View Evaluation Metrics Comparison (Calculated during Model Training)"):
+        st.write("These metrics were generated during the initial model training phase using the 20% holdout test split. They serve as the baseline performance expectations for the deployed models.")
+        
+        # Hardcoded data from your README to avoid needing external JSON files
+        baseline_data = {
+            "Model": ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"],
+            "Accuracy": [0.973684, 0.947368, 0.947368, 0.964912, 0.964912, 0.956140],
+            "AUC": [0.997380, 0.943990, 0.981985, 0.997380, 0.995251, 0.990829],
+            "Precision": [0.973719, 0.947368, 0.947368, 0.965205, 0.965205, 0.956088],
+            "Recall": [0.973684, 0.947368, 0.947368, 0.964912, 0.964912, 0.956140],
+            "F1 Score": [0.973621, 0.947368, 0.947368, 0.964738, 0.964738, 0.956036],
+            "MCC": [0.943898, 0.887979, 0.887979, 0.925285, 0.925285, 0.906379]
+        }
+        df_baseline = pd.DataFrame(baseline_data)
+        
+        st.dataframe(df_baseline.style.highlight_max(axis=0, color='lightgreen', subset=["Accuracy", "AUC", "Precision", "Recall", "F1 Score", "MCC"]).format(
+            {"Accuracy": "{:.4f}", "AUC": "{:.4f}", "Precision": "{:.4f}",
+             "Recall": "{:.4f}", "F1 Score": "{:.4f}", "MCC": "{:.4f}"}), use_container_width=True)
+
+    st.markdown("---")
+
+    st.subheader("2. Test Data Selection")
     data_source_test = st.radio(
         "Choose how to load test data:", 
         ["Upload Custom Test Data", "Load Test Data from GitHub"],
@@ -181,7 +205,7 @@ with tab2:
             st.download_button(label="⬇️ Download blind-data.csv (No Target)", data=csv_blind, file_name="blind-data.csv", mime="text/csv")
 
         st.markdown("---")
-        st.subheader("2. Upload Test Data for Inference")
+        st.subheader("3. Upload Test Data for Inference")
         test_file = st.file_uploader("Upload your test-data.csv or blind-data.csv", type=["csv"], key="test_upload")
 
         if test_file is not None:
@@ -197,7 +221,7 @@ with tab2:
     # --- OPTION B: LOAD FROM GITHUB ---
     else:
         st.markdown("---")
-        st.subheader("2. GitHub Test Data Details")
+        st.subheader("3. GitHub Test Data Details")
         try:
             # Attempts to load a physically saved test-data.csv if it exists in the repo
             new_test_df = pd.read_csv('test-data.csv')
@@ -216,8 +240,8 @@ with tab2:
 
     st.markdown("---")
 
-    # --- 3. RUN EVALUATION & PREDICTION (Always Visible) ---
-    st.subheader("3. Run Evaluation / Predictions")
+    # --- 4. RUN EVALUATION & PREDICTION (Always Visible) ---
+    st.subheader("4. Run Evaluation / Predictions")
 
     # Determine dynamic label based on presence of target column
     if new_test_df is not None and target_col not in new_test_df.columns:
