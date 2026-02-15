@@ -101,7 +101,7 @@ with tab1:
     st.subheader("Dataset Used: Breast Cancer Wisconsin (Diagnostic) Dataset")
     st.markdown("""
     **Dataset Details:**
-    This dataset consists of 31 total features computed from a digitized image of a fine needle aspirate (FNA) of a breast mass. These features mathematically describe the characteristics of the cell nuclei present in the image, capturing 10 distinct traits (such as radius, texture, and area) across their mean, standard error, and 'worst' (largest) values, alongside the final diagnosis.
+    This dataset consists of 30 total features (excluding target variable "diagnosis" and non-predictive column like "id") computed from a digitized image of a fine needle aspirate (FNA) of a breast mass. These features mathematically describe the characteristics of the cell nuclei present in the image, capturing 10 distinct traits (such as radius, texture, and area) across their mean, standard error, and 'worst' (largest) values.
     * **Dataset Source: Kaggle (https://www.kaggle.com/datasets/uciml/breast-cancer-wisconsin-data)
     * **Target Variable:** `diagnosis`
     * **Target Classes:** `M` = Malignant (Cancerous), `B` = Benign (Non-Cancerous)
