@@ -60,7 +60,8 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)
 
-st.title("Breast Cancer Diagnostic Model: Inference Dashboard")
+st.title("Classification Model Deployment & Evaluation - Breast Cancer Diagnostic")
+st.markdown("###Machine Learning Assignment-2 : Fouzan Ashraf")
 
 # --- DATA LOADING (For generating Test Data Download & Analysis) ---
 try:
