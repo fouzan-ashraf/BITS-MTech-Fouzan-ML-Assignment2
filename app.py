@@ -101,7 +101,7 @@ with tab1:
     st.subheader("Dataset Used: Breast Cancer Wisconsin (Diagnostic) Dataset")
     st.markdown("""
     **Dataset Details:**
-    Features are computed from a digitized image of a fine needle aspirate (FNA) of a breast mass. They describe characteristics of the cell nuclei present in the image.
+    This dataset consists of 31 total features computed from a digitized image of a fine needle aspirate (FNA) of a breast mass. These features mathematically describe the characteristics of the cell nuclei present in the image, capturing 10 distinct traits (such as radius, texture, and area) across their mean, standard error, and 'worst' (largest) values, alongside the final diagnosis.
     * **Target Variable:** `diagnosis`
     * **Target Classes:** `M` = Malignant (Cancerous), `B` = Benign (Non-Cancerous)
     * **Key Features:** Radius, Texture, Perimeter, Area, Smoothness, Compactness, Concavity, Symmetry, and Fractal Dimension.
