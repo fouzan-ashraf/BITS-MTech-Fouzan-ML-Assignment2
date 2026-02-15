@@ -67,6 +67,7 @@ The objective of this assignment is to implement an end-to-end Machine Learning 
     ├── Naive_Bayes_model.pkl
     ├── Random_Forest_model.pkl
     └── XGBoost_model.pkl
+```
 
 ## f. Building and Deployment
 
