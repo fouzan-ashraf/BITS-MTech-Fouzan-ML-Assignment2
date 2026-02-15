@@ -149,8 +149,8 @@ with tab2:
     # --- VISUAL INSTRUCTION BANNER ---
     st.info("""
     💡 **GUIDE: Evaluation Mode vs. Blind Prediction Mode**
-    * **Evaluation Mode:** Upload test data *with* the `diagnosis` column. This allows the app to calculate Accuracy, AUC, and compare all 6 models against the true answers.
-    * **Blind Prediction Mode:** Upload unseen data *without* the `diagnosis` column. Use the **Evaluate Single Model** option to make the AI generate actual predictions for the unknown data. 
+    * **Evaluation Mode:** Upload test data *with* the `diagnosis` column. This allows the app to calculate Accuracy, AUC & other metrics and compare all 6 models against the true answers.
+    * **Blind Prediction Mode:** Upload unseen data *without* the `diagnosis` column. Use the **Predic Using Individual Models from Dropdown** option to make the AI generate actual predictions for the unknown data. 
     *(Note: "Compare All Models" is automatically disabled for blind data, as metrics cannot be calculated without the ground truth).*
     """)
 
@@ -223,7 +223,7 @@ with tab2:
         single_model_label = "Evaluate Individual Models from Dropdown"
 
     if new_test_df is None:
-        st.info("ℹ️ Please upload a dataset or select 'Load Test Data from GitHub' above to enable predictions.")
+        st.info("ℹ️ Please upload a dataset or select 'Load Test Data from GitHub' above to enable evaluations/predictions.")
 
     models_to_test = ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"]
     
@@ -315,7 +315,7 @@ with tab2:
                 st.error("⚠️ Cannot run evaluation. Please provide test data first.")
                 st.toast("Missing data!", icon="⚠️")
             elif target_col not in new_test_df.columns:
-                st.error("⚠️ Blind prediction mode (missing target column) is only supported in 'Evaluate Single Model'. To compare accuracy across models, the dataset must contain the 'diagnosis' column so we can check the answers.")
+                st.error("⚠️ Blind prediction mode (missing target column) is only supported in 'Predict Using Individual Models from Dropdown'. To compare accuracy across models, the dataset must contain the 'diagnosis' column so we can check the answers.")
                 st.toast("Incompatible Mode!", icon="❌")
             else:
                 inf_results = []
