@@ -26,8 +26,8 @@ The objective of this assignment is to implement an end-to-end Machine Learning 
 | **Decision Tree** | 0.947368 | 0.943990 | 0.947368 | 0.947368 | 0.947368 | 0.887979 |
 | **KNN** | 0.947368 | 0.981985 | 0.947368 | 0.947368 | 0.947368 | 0.887979 |
 | **Naive Bayes** | 0.964912 | 0.997380 | 0.965205 | 0.964912 | 0.964738 | 0.925285 |
-| **Random Forest (Ensemble)** | 0.964912 | 0.995251 | 0.965205 | 0.964912 | 0.964738 | 0.925285 |
-| **XGBoost (Ensemble)** | 0.956140 | 0.990829 | 0.956088 | 0.956140 | 0.956036 | 0.906379 |
+| **Random Forest** | 0.964912 | 0.995251 | 0.965205 | 0.964912 | 0.964738 | 0.925285 |
+| **XGBoost** | 0.956140 | 0.990829 | 0.956088 | 0.956140 | 0.956036 | 0.906379 |
 
 ### Metric Definitions
 * **Accuracy:** The ratio of correctly predicted observations to the total observations.
@@ -59,19 +59,19 @@ The objective of this assignment is to implement an end-to-end Machine Learning 
 └── model/                  
     ├── 2025ab05236_ml_assignment2.ipynb
     ├── scaler.pkl          
-    ├── label_encoder.pkl   
+    ├── label_encoder.pkl 
+    ├── evaluation_metrics.json  
     ├── Logistic_Regression_model.pkl
     ├── Decision_Tree_model.pkl
     ├── KNN_model.pkl
     ├── Naive_Bayes_model.pkl
     ├── Random_Forest_model.pkl
     └── XGBoost_model.pkl
-```
 
 ## f. Building and Deployment
 
 ### Pre-Requisites:
-* Python 3.8 or higher
+* Python 3.11 or higher
 * `pip` package manager
 
 ### Steps to Build Locally:
@@ -114,6 +114,7 @@ The objective of this assignment is to implement an end-to-end Machine Learning 
 The deployed Streamlit application features two main sections:
 * **Training Data Analysis:** A visual overview of the dataset used to train the models, including feature counts, target distribution, and a raw data preview.
 * **Model Inference and Evaluation:** The core engine of the app. 
+    * **Pre-Trained Baseline Performance:** View the evaluation metrics calculated automatically during the training phase using the holdout test set (dynamically loaded from evaluation_metrics.json).
     * **Evaluation Mode:** Download the unseen test data provided on the screen (or use the GitHub default), upload it back to the app, and evaluate individual models or compare all 6 side-by-side to view detailed performance metrics.
     * **Blind Prediction Mode:** Upload a "blind" dataset (data *without* the `Diagnosis` column) and use the "Predict using One of the 6 models from dropdown" feature to have the AI generate and download a CSV of actual medical predictions.
 
