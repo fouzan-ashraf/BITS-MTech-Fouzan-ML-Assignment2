@@ -18,7 +18,8 @@ st.markdown("""
     <style>
     /* 1. REMOVE TOP BLANK SPACE */
     .block-container {
-        padding-top: 2.5rem !important; 
+        padding-top: 4rem !important;
+        padding-bottom: 1rem !important;
     }
     
     /* 2. TAB STYLING */
