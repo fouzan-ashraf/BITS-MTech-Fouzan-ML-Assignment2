@@ -90,7 +90,7 @@ except FileNotFoundError:
     st.stop()
 
 # ==========================================
-# ONLY 2 TABS AS REQUESTED
+# 2 Side by Side Tab
 # ==========================================
 tab1, tab2 = st.tabs(["📊 Training Data Analysis", "🚀 Model Inference and Evaluation"])
 
@@ -138,6 +138,14 @@ with tab1:
 # TAB 2: MODEL INFERENCE AND EVALUATION
 # ------------------------------------------
 with tab2:
+    # --- VISUAL INSTRUCTION BANNER ---
+    st.info("""
+    💡 **GUIDE: Evaluation Mode vs. Blind Prediction Mode**
+    * **Evaluation Mode:** Upload test data *with* the `diagnosis` column. This allows the app to calculate Accuracy, AUC, and compare all 6 models against the true answers.
+    * **Blind Prediction Mode:** Upload unseen data *without* the `diagnosis` column. Use the **Evaluate Single Model** option to make the AI generate actual predictions for the unknown data. 
+    *(Note: "Compare All Models" is automatically disabled for blind data, as metrics cannot be calculated without the ground truth).*
+    """)
+
     st.subheader("1. Test Data Selection")
     data_source_test = st.radio(
         "Choose how to load test data:", 
@@ -149,17 +157,31 @@ with tab2:
 
     # --- OPTION A: UPLOAD CUSTOM DATA ---
     if data_source_test == "Upload Custom Test Data":
-        st.write("Download the unseen 20% test split to evaluate the pre-trained models.")
-        csv_test = test_export_df.to_csv(index=False).encode('utf-8')
-        st.download_button(label="⬇️ Download test-data.csv", data=csv_test, file_name="test-data.csv", mime="text/csv")
+        st.write("Download the unseen 20% test split to evaluate the pre-trained models, or download the blind dataset to test real-world predictions.")
+        
+        # Two side-by-side download buttons
+        col_down1, col_down2 = st.columns(2)
+        with col_down1:
+            csv_test = test_export_df.to_csv(index=False).encode('utf-8')
+            st.download_button(label="⬇️ Download test-data.csv (With Target)", data=csv_test, file_name="test-data.csv", mime="text/csv")
+        with col_down2:
+            # X_test already has the target column dropped during the train_test_split
+            csv_blind = X_test.to_csv(index=False).encode('utf-8')
+            st.download_button(label="⬇️ Download blind-data.csv (No Target)", data=csv_blind, file_name="blind-data.csv", mime="text/csv")
 
         st.markdown("---")
         st.subheader("2. Upload Test Data for Inference")
-        test_file = st.file_uploader("Upload your test-data.csv", type=["csv"], key="test_upload")
+        test_file = st.file_uploader("Upload your test-data.csv or blind-data.csv", type=["csv"], key="test_upload")
 
         if test_file is not None:
             new_test_df = pd.read_csv(test_file)
-            st.success(f"Test data loaded successfully! ({new_test_df.shape[0]} rows)")
+            st.success(f"Data loaded successfully! ({new_test_df.shape[0]} rows)")
+            
+            # Display what mode the app is going into
+            if target_col in new_test_df.columns:
+                st.success("🎯 Target column detected: Entering **Evaluation Mode**")
+            else:
+                st.warning("❓ No target column detected: Entering **Blind Prediction Mode**")
 
     # --- OPTION B: LOAD FROM GITHUB ---
     else:
@@ -168,11 +190,11 @@ with tab2:
         try:
             # Attempts to load a physically saved test-data.csv if it exists in the repo
             new_test_df = pd.read_csv('test-data.csv')
-            st.success(f"GitHub test data loaded successfully!")
+            st.success(f"GitHub test data loaded successfully! Entering **Evaluation Mode**.")
         except FileNotFoundError:
             # Falls back to the dynamically generated test split if the file isn't physically committed yet
             new_test_df = test_export_df.copy()
-            st.success("Default holdout test data generated from base dataset loaded!")
+            st.success("Default holdout test data generated from base dataset loaded! Entering **Evaluation Mode**.")
         
         # Display details about the loaded GitHub data
         st.write(f"**Total Rows:** {new_test_df.shape[0]}")
@@ -182,13 +204,13 @@ with tab2:
         st.dataframe(new_test_df.head(5), use_container_width=True)
 
     st.markdown("---")
-   
-   # --- 3. RUN EVALUATION & PREDICTION (Always Visible) ---
+    
+    # --- 3. RUN EVALUATION & PREDICTION (Always Visible) ---
     st.subheader("3. Run Evaluation / Predictions")
-
+    
     if new_test_df is None:
-        st.info("ℹ️ Please upload a test dataset or select 'Load Test Data from GitHub' above to enable predictions.")
-
+        st.info("ℹ️ Please upload a dataset or select 'Load Test Data from GitHub' above to enable predictions.")
+        
     models_to_test = ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"]
     inference_mode = st.radio("Select Inference Mode:", ["Evaluate Single Model", "Compare All Models"], horizontal=True)
 
@@ -197,7 +219,7 @@ with tab2:
         inf_model_name = st.selectbox("Select Model for Inference", models_to_test)
         if st.button("🧠 Run Inference", type="primary"):
             if new_test_df is None:
-                st.warning("⚠️ Cannot run evaluation. Please provide test data first.")
+                st.warning("⚠️ Cannot run inference. Please provide data first.")
             else:
                 try:
                     loaded_scaler = joblib.load('model/scaler.pkl')
@@ -237,8 +259,7 @@ with tab2:
                             with v2:
                                 st.write("**Classification Report**")
                                 st.dataframe(pd.DataFrame(classification_report(y_new, p, target_names=loaded_le.classes_, output_dict=True)).T.style.format("{:.4f}"))
-
-                            # Replaced Convergence Graph with ROC Curve for Inference
+                            
                             st.write("**Receiver Operating Characteristic (ROC) Curve**")
                             from sklearn.metrics import RocCurveDisplay
                             fig_roc, ax_roc = plt.subplots(figsize=(6, 4))
@@ -248,21 +269,20 @@ with tab2:
                     else:
                         # --- BLIND PREDICTION MODE ---
                         X_new_scaled = loaded_scaler.transform(new_test_df)
-
+                        
                         with st.spinner("Generating Predictions for Unseen Data..."):
                             predictions = loaded_model.predict(X_new_scaled)
                             decoded_predictions = loaded_le.inverse_transform(predictions)
-
-                            # Create a display dataframe
+                            
                             results_df = new_test_df.copy()
                             results_df.insert(0, 'Predicted_Diagnosis', decoded_predictions)
-
+                            
                             st.success(f"Predictions generated successfully using {inf_model_name}!")
-                            st.write("**Prediction Results:**")
-                            st.dataframe(results_df, use_container_width=True)
-
+                            st.write("**Prediction Results (First 10 Rows):**")
+                            st.dataframe(results_df.head(10), use_container_width=True)
+                            
                             csv_preds = results_df.to_csv(index=False).encode('utf-8')
-                            st.download_button(label="⬇️ Download Predictions as CSV", data=csv_preds, file_name=f"{safe_name}_predictions.csv", mime="text/csv")
+                            st.download_button(label="⬇️ Download Full Predictions as CSV", data=csv_preds, file_name=f"{safe_name}_predictions.csv", mime="text/csv")
 
                 except FileNotFoundError as e:
                     st.error(f"⚠️ Required pre-trained file not found. Ensure models and preprocessors exist in 'model/'. Error: {e}")
@@ -273,7 +293,7 @@ with tab2:
             if new_test_df is None:
                 st.warning("⚠️ Cannot run evaluation. Please provide test data first.")
             elif target_col not in new_test_df.columns:
-                st.error("⚠️ Blind prediction mode (missing target column) is only supported in 'Evaluate Single Model'. To compare accuracy across models, the dataset must contain the 'diagnosis' column.")
+                st.error("⚠️ Blind prediction mode (missing target column) is only supported in 'Evaluate Single Model'. To compare accuracy across models, the dataset must contain the 'diagnosis' column so we can check the answers.")
             else:
                 inf_results = []
                 try:
@@ -314,11 +334,10 @@ with tab2:
                             plt.title("Model Accuracy on Unseen Test Data")
                             st.pyplot(fig_bar)
 
-                            # --- DETAILED OBSERVATIONS ADDED BACK ---
                             best_acc = res_df_new.loc[res_df_new['Accuracy'].idxmax(), 'Model']
                             best_rec = res_df_new.loc[res_df_new['Recall'].idxmax(), 'Model']
                             best_f1 = res_df_new.loc[res_df_new['F1 Score'].idxmax(), 'Model']
-
+                            
                             obs_text = f"""
                             **💡 Key Observations on Holdout Test Data:**
                             * **Highest Overall Accuracy:** The **{best_acc}** model is the top performer in raw accuracy on this unseen data.
