@@ -16,6 +16,12 @@ st.set_page_config(page_title="Machine Learning Assignment-2 : Fouzan Ashraf", l
 # --- CUSTOM CSS FOR FULL-WIDTH TABS & HEADER ---
 st.markdown("""
     <style>
+    /* 1. REMOVE TOP BLANK SPACE */
+    .block-container {
+        padding-top: 1.5rem !important; 
+    }
+    
+    /* 2. TAB STYLING */
     button[data-baseweb="tab"] {
         flex: 1;
         font-size: 20px !important;
@@ -34,12 +40,14 @@ st.markdown("""
         font-size: 22px !important;
         font-weight: 800 !important; 
     }
+    
+    /* 3. HORIZONTAL HEADER STYLING */
     .header-box {
         background-color: #f1f3f6;
         padding: 10px;
         border-radius: 10px;
         border-left: 5px solid #4e73df;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
     }
     .header-text {
         font-size: 16px !important;
@@ -60,7 +68,8 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)
 
-st.title("ML Classification Model Comparision - Breast Cancer Diagnostic")
+# --- SHRINK TITLE TO FIT ONE LINE ---
+st.markdown("<h2 style='font-size: 32px; font-weight: bold; margin-bottom: 0px; padding-top: 0px;'>ML Classification Model Comparision - Breast Cancer Diagnostic</h2>", unsafe_allow_html=True)
 st.markdown("Machine Learning Assignment-2 : Fouzan Ashraf")
 
 # --- DATA LOADING (For generating Test Data Download & Analysis) ---
@@ -98,7 +107,7 @@ tab1, tab2 = st.tabs(["📊 Training Data Analysis", "🚀 Model Inference and E
 # TAB 1: TRAINING DATA ANALYSIS
 # ------------------------------------------
 with tab1:
-    st.subheader("Dataset Used: Breast Cancer Wisconsin (Diagnostic) Dataset")
+    st.subheader("Training Data Used: Breast Cancer Wisconsin (Diagnostic) Dataset")
     st.markdown("""
     **Dataset Details:**
     This dataset consists of 30 total features (excluding target variable "diagnosis" and non-predictive column like "id") computed from a digitized image of a fine needle aspirate (FNA) of a breast mass. These features mathematically describe the characteristics of the cell nuclei present in the image, capturing 10 distinct traits (such as radius, texture, and area) across their mean, standard error, and 'worst' (largest) values.
