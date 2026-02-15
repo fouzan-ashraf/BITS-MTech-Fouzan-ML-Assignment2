@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
+import joblib
+import os
 from sklearn.model_selection import train_test_split, learning_curve
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import (accuracy_score, roc_auc_score, precision_score, 
@@ -19,10 +21,12 @@ from xgboost import XGBClassifier
 # --- Page Configuration ---
 st.set_page_config(page_title="Machine Learning Assignment-2 : Fouzan Ashraf", layout="wide")
 
+# Ensure the 'model' directory exists
+os.makedirs('model', exist_ok=True)
+
 # --- CUSTOM CSS FOR FULL-WIDTH TABS & HEADER ---
 st.markdown("""
     <style>
-    /* Force Tabs to take full width and look appealing */
     button[data-baseweb="tab"] {
         flex: 1;
         font-size: 20px !important;
@@ -37,12 +41,10 @@ st.markdown("""
         color: white !important;
         border-bottom: 4px solid #2e59d9 !important;
     }
-    /* BIGGER AND BOLDER TAB TEXT */
     .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
         font-size: 22px !important;
         font-weight: 800 !important; 
     }
-    /* Smaller, cleaner header text */
     .header-box {
         background-color: #f1f3f6;
         padding: 10px;
@@ -58,7 +60,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 1. HORIZONTAL HEADER (Top Left/Center) ---
+# --- 1. HORIZONTAL HEADER ---
 st.markdown(f"""
     <div class="header-box">
         <div style="display: flex; justify-content: space-between;">
@@ -73,7 +75,6 @@ st.title("Machine Learning Assignment-2 : Fouzan Ashraf")
 st.markdown("### Classification Model Deployment & Evaluation Dashboard")
 
 # --- 2. DATA LOADING & TARGET SELECTION ---
-# Renamed from "1. Data Configuration"
 st.header("Data Upload/Load")
 data_source = st.radio("Select Data Source", ["Upload Your Own CSV", "Use Preloaded GitHub Repository Dataset (data.csv)"], horizontal=True)
 
@@ -89,10 +90,8 @@ elif data_source == "Upload Your Own CSV":
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
 
-# --- IN-BODY TARGET SELECTION ---
 target_col = None
 if df is not None:
-    # Cleanup
     if 'id' in df.columns: df = df.drop(columns=['id'])
     if 'Unnamed: 32' in df.columns: df = df.drop(columns=['Unnamed: 32'])
     
@@ -102,22 +101,34 @@ if df is not None:
         default_idx = target_options.index('diagnosis') if 'diagnosis' in target_options else len(target_options)-1
         target_col = st.selectbox("🎯 Select Target Column (Label)", target_options, index=default_idx)
     
-    # Preprocessing
     X = df.drop(columns=[target_col])
     y = df[target_col]
     le = LabelEncoder()
-    try: y_encoded = le.fit_transform(y)
-    except: y_encoded = y
+    
+    is_categorical = y.dtype == 'object'
+    if is_categorical:
+        y_encoded = le.fit_transform(y)
+        joblib.dump(le, 'model/label_encoder.pkl') # Save to model/
+    else:
+        y_encoded = y
 
     X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+    
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
+    joblib.dump(scaler, 'model/scaler.pkl') # Save to model/
+
+    test_export_df = X_test.copy()
+    if is_categorical:
+        test_export_df[target_col] = le.inverse_transform(y_test)
+    else:
+        test_export_df[target_col] = y_test
 
     st.markdown("---")
 
-    # --- 3. FULL-WIDTH TABS ---
-    tab1, tab2, tab3 = st.tabs(["📊 Data Analysis", "⚙️ Select Model to Train", "🏆 Compare All Models"])
+    # --- 3. TABS ---
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Data Analysis", "⚙️ Select Model to Train", "🏆 Compare All Models", "🚀 Inference (.pkl)"])
 
     # TAB 1: DATA ANALYSIS
     with tab1:
@@ -127,32 +138,21 @@ if df is not None:
         s2.metric("Total Features", df.shape[1] - 1)
         s3.metric("Missing Values", df.isnull().sum().sum())
         s4.metric("Duplicate Rows", df.duplicated().sum())
-
-        st.markdown(f"**Original Data Shape:** `{df.shape}`")
         
-        # --- NEW: Explicit Malignant / Benign Counts ---
         st.markdown(f"**Target Class Distribution ({target_col}):**")
         class_counts = df[target_col].value_counts()
-        
-        # Dynamically create columns based on the number of classes
         count_cols = st.columns(len(class_counts))
         for i, (cls_name, count) in enumerate(class_counts.items()):
             label = str(cls_name)
-            # Map 'M' and 'B' for clearer UI if present
             if label.upper() == 'M': label = "Malignant (M)"
             if label.upper() == 'B': label = "Benign (B)"
-            
             pct = (count / df.shape[0]) * 100
             count_cols[i].metric(f"Class: {label}", f"{count} ({pct:.1f}%)")
         
-        st.markdown("<br>", unsafe_allow_html=True)
-        
         c_da1, c_da2 = st.columns([1, 1])
         with c_da1:
-            st.write("**Dataset Preview**")
             st.dataframe(df.head(10), use_container_width=True)
         with c_da2:
-            st.write("**Target Distribution**")
             fig_dist, ax_dist = plt.subplots(figsize=(6, 4))
             sns.countplot(x=target_col, data=df, palette='viridis', ax=ax_dist)
             st.pyplot(fig_dist)
@@ -162,7 +162,6 @@ if df is not None:
         model_name = st.selectbox("Choose Classification Model", 
                                   ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"])
         
-        # Setup model
         if model_name == "Logistic Regression": model = LogisticRegression()
         elif model_name == "Decision Tree": model = DecisionTreeClassifier(random_state=42)
         elif model_name == "KNN": model = KNeighborsClassifier(n_neighbors=5)
@@ -176,12 +175,15 @@ if df is not None:
                 model.fit(X_train_scaled, y_train)
                 dur = time.time() - start
                 
+                # Save specifically named model to model/
+                safe_name = model_name.replace(" ", "_")
+                joblib.dump(model, f'model/{safe_name}_model.pkl')
+                
                 y_pred = model.predict(X_test_scaled)
                 y_prob = model.predict_proba(X_test_scaled)[:, 1] if hasattr(model, "predict_proba") else y_pred
 
-                st.success(f"Model trained successfully in {dur:.4f}s")
+                st.success(f"Model trained and saved as 'model/{safe_name}_model.pkl' in {dur:.4f}s")
                 
-                # Metrics (All 6)
                 m1, m2, m3, m4, m5, m6 = st.columns(6)
                 m1.metric("Accuracy", f"{accuracy_score(y_test, y_pred):.4f}")
                 m2.metric("AUC", f"{roc_auc_score(y_test, y_prob):.4f}")
@@ -190,84 +192,127 @@ if df is not None:
                 m5.metric("F1 Score", f"{f1_score(y_test, y_pred, average='weighted'):.4f}")
                 m6.metric("MCC Score", f"{matthews_corrcoef(y_test, y_pred):.4f}")
 
-                # Visuals
-                st.markdown("---")
-                v1, v2 = st.columns(2)
-                with v1:
-                    st.write("**Confusion Matrix**")
-                    fig_cm, ax_cm = plt.subplots()
-                    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues')
-                    st.pyplot(fig_cm)
-                with v2:
-                    st.write("**Classification Report**")
-                    st.dataframe(pd.DataFrame(classification_report(y_test, y_pred, output_dict=True)).T.style.format("{:.4f}"))
-                
-                # Convergence Graph
-                st.write("**Convergence Graph (Learning Curve)**")
-                
-                train_sizes, train_scores, test_scores = learning_curve(model, X_train_scaled, y_train, cv=5)
-                fig_lc, ax_lc = plt.subplots(figsize=(10, 4))
-                ax_lc.plot(train_sizes, np.mean(train_scores, axis=1), 'o-', label="Training Score")
-                ax_lc.plot(train_sizes, np.mean(test_scores, axis=1), 'o-', label="Validation Score")
-                ax_lc.set_xlabel("Training Examples"), ax_lc.set_ylabel("Score"), ax_lc.legend()
-                st.pyplot(fig_lc)
-
     # TAB 3: COMPARE ALL MODELS
     with tab3:
         if st.button("🔥 Run All-Model Dynamic Comparison", type="primary"):
-            with st.spinner("Analyzing all 6 models..."):
+            with st.spinner("Training and saving all 6 models to model/ directory..."):
                 models_list = {
                     "Logistic Regression": LogisticRegression(),
-                    "Decision Tree": DecisionTreeClassifier(),
-                    "KNN": KNeighborsClassifier(),
+                    "Decision Tree": DecisionTreeClassifier(random_state=42),
+                    "KNN": KNeighborsClassifier(n_neighbors=5),
                     "Naive Bayes": GaussianNB(),
-                    "Random Forest": RandomForestClassifier(),
-                    "XGBoost": XGBClassifier(eval_metric='logloss')
+                    "Random Forest": RandomForestClassifier(random_state=42),
+                    "XGBoost": XGBClassifier(eval_metric='logloss', random_state=42)
                 }
                 
                 comp_results = []
                 for name, m in models_list.items():
                     m.fit(X_train_scaled, y_train)
+                    
+                    # Save each model to model/
+                    safe_name = name.replace(" ", "_")
+                    joblib.dump(m, f'model/{safe_name}_model.pkl')
+                    
                     p = m.predict(X_test_scaled)
                     prob = m.predict_proba(X_test_scaled)[:, 1] if hasattr(m, "predict_proba") else p
                     
-                    # Added Precision and Recall to the tracking list
                     comp_results.append({
-                        "Model": name, 
-                        "Accuracy": accuracy_score(y_test, p),
-                        "AUC": roc_auc_score(y_test, prob), 
+                        "Model": name, "Accuracy": accuracy_score(y_test, p), "AUC": roc_auc_score(y_test, prob), 
                         "Precision": precision_score(y_test, p, average='weighted', zero_division=0),
                         "Recall": recall_score(y_test, p, average='weighted', zero_division=0),
-                        "F1 Score": f1_score(y_test, p, average='weighted'),
-                        "MCC": matthews_corrcoef(y_test, p)
+                        "F1 Score": f1_score(y_test, p, average='weighted'), "MCC": matthews_corrcoef(y_test, p)
                     })
                 
                 res_df = pd.DataFrame(comp_results)
                 st.subheader("🏆 Comparative Leaderboard")
                 st.dataframe(res_df.style.highlight_max(axis=0, color='lightgreen').format(
                     {"Accuracy": "{:.4f}", "AUC": "{:.4f}", "Precision": "{:.4f}", 
-                     "Recall": "{:.4f}", "F1 Score": "{:.4f}", "MCC": "{:.4f}"}), 
-                    use_container_width=True)
-                
-                # Visual Comparison
-                fig_bar, ax_bar = plt.subplots(figsize=(10, 5))
-                sns.barplot(x="Accuracy", y="Model", data=res_df, palette="viridis")
-                plt.title("Model Accuracy Benchmarking")
-                st.pyplot(fig_bar)
-                
-                # Dynamic and Expanded Observations
-                best_acc = res_df.loc[res_df['Accuracy'].idxmax(), 'Model']
-                best_rec = res_df.loc[res_df['Recall'].idxmax(), 'Model']
-                best_f1 = res_df.loc[res_df['F1 Score'].idxmax(), 'Model']
-                
-                obs_text = f"""
-                **💡 Key Observations on Current Data:**
-                * **Highest Accuracy:** The **{best_acc}** model is the top overall performer in raw accuracy.
-                * **Best Recall (Safety):** **{best_rec}** achieved the highest recall. For medical diagnosis datasets, maximizing recall is usually the priority to minimize false negatives (i.e., missing a malignant diagnosis).
-                * **Best Balance (F1 Score):** **{best_f1}** leads in the F1 Score, indicating it handles the trade-off between Precision (false alarms) and Recall (missed diagnoses) the best.
-                * *General Insight: Linear models (like Logistic Regression) often excel as strong baselines on standardized medical data, while ensemble methods (Random Forest, XGBoost) tend to win when feature relationships are highly non-linear.*
-                """
-                st.info(obs_text)
+                     "Recall": "{:.4f}", "F1 Score": "{:.4f}", "MCC": "{:.4f}"}), use_container_width=True)
+                st.success("All models successfully saved to the 'model/' directory as .pkl files!")
 
+    # --- TAB 4: INFERENCE (STRICTLY FROM .PKL) ---
+    with tab4:
+        st.subheader("1. Download Holdout Test Data")
+        csv_test = test_export_df.to_csv(index=False).encode('utf-8')
+        st.download_button(label="⬇️ Download test-data.csv", data=csv_test, file_name="test-data.csv", mime="text/csv")
+        
+        st.markdown("---")
+        st.subheader("2. Upload Test Data for Inference (Using Saved .pkl Models)")
+        test_file = st.file_uploader("Upload your test-data.csv", type=["csv"], key="test_upload")
+        
+        if test_file is not None:
+            new_test_df = pd.read_csv(test_file)
+            st.success(f"Test data loaded! ({new_test_df.shape[0]} rows)")
+            
+            if target_col not in new_test_df.columns:
+                st.error(f"Dataset must contain target column: '{target_col}'")
+            else:
+                try:
+                    # LOAD SCALER FROM GitHub Repo model/ folder
+                    loaded_scaler = joblib.load('model/scaler.pkl')
+                    
+                    X_new = new_test_df.drop(columns=[target_col])
+                    y_new_raw = new_test_df[target_col]
+                    
+                    if is_categorical:
+                        loaded_le = joblib.load('model/label_encoder.pkl')
+                        y_new = loaded_le.transform(y_new_raw)
+                    else:
+                        y_new = y_new_raw
+                        
+                    X_new_scaled = loaded_scaler.transform(X_new)
+                    
+                    models_to_test = ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"]
+                    inference_mode = st.radio("Select Inference Mode:", ["Evaluate Single Model (.pkl)", "Compare All Models (.pkl)"], horizontal=True)
+                    
+                    if inference_mode == "Evaluate Single Model (.pkl)":
+                        inf_model_name = st.selectbox("Select Model for Inference", models_to_test)
+                        if st.button("🧠 Run Inference from .pkl", type="primary"):
+                            safe_name = inf_model_name.replace(" ", "_")
+                            try:
+                                loaded_model = joblib.load(f'model/{safe_name}_model.pkl')
+                                with st.spinner("Predicting using saved model..."):
+                                    p = loaded_model.predict(X_new_scaled)
+                                    prob = loaded_model.predict_proba(X_new_scaled)[:, 1] if hasattr(loaded_model, "predict_proba") else p
+                                    
+                                    m1, m2, m3, m4, m5, m6 = st.columns(6)
+                                    m1.metric("Accuracy", f"{accuracy_score(y_new, p):.4f}")
+                                    m2.metric("AUC", f"{roc_auc_score(y_new, prob):.4f}")
+                                    m3.metric("Precision", f"{precision_score(y_new, p, average='weighted', zero_division=0):.4f}")
+                                    m4.metric("Recall", f"{recall_score(y_new, p, average='weighted', zero_division=0):.4f}")
+                                    m5.metric("F1 Score", f"{f1_score(y_new, p, average='weighted'):.4f}")
+                                    m6.metric("MCC Score", f"{matthews_corrcoef(y_new, p):.4f}")
+                            except FileNotFoundError:
+                                st.error(f"⚠️ 'model/{safe_name}_model.pkl' not found. Ensure it is committed to GitHub or train it in Tab 2 first.")
+
+                    else:
+                        if st.button("🔥 Run All-Model .pkl Inference", type="primary"):
+                            inf_results = []
+                            with st.spinner("Loading .pkl files from model/ directory..."):
+                                for name in models_to_test:
+                                    safe_name = name.replace(" ", "_")
+                                    try:
+                                        loaded_m = joblib.load(f'model/{safe_name}_model.pkl')
+                                        p = loaded_m.predict(X_new_scaled)
+                                        prob = loaded_m.predict_proba(X_new_scaled)[:, 1] if hasattr(loaded_m, "predict_proba") else p
+                                        
+                                        inf_results.append({
+                                            "Model": name, "Accuracy": accuracy_score(y_new, p), "AUC": roc_auc_score(y_new, prob), 
+                                            "Precision": precision_score(y_new, p, average='weighted', zero_division=0),
+                                            "Recall": recall_score(y_new, p, average='weighted', zero_division=0),
+                                            "F1 Score": f1_score(y_new, p, average='weighted'), "MCC": matthews_corrcoef(y_new, p)
+                                        })
+                                    except FileNotFoundError:
+                                        st.warning(f"⚠️ {name} .pkl not found in model/. Skipping.")
+                                
+                                if inf_results:
+                                    res_df_new = pd.DataFrame(inf_results)
+                                    st.subheader("🏆 Inference Leaderboard (From Saved .pkl Models)")
+                                    st.dataframe(res_df_new.style.highlight_max(axis=0, color='lightgreen').format(
+                                        {"Accuracy": "{:.4f}", "AUC": "{:.4f}", "Precision": "{:.4f}", 
+                                         "Recall": "{:.4f}", "F1 Score": "{:.4f}", "MCC": "{:.4f}"}), use_container_width=True)
+
+                except FileNotFoundError:
+                    st.error("⚠️ Preprocessor files ('model/scaler.pkl' or 'model/label_encoder.pkl') not found. Ensure they are in your GitHub repo.")
 else:
     st.info("Please select a data source or upload a file to begin the analysis.")
