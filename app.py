@@ -37,6 +37,11 @@ st.markdown("""
         color: white !important;
         border-bottom: 4px solid #2e59d9 !important;
     }
+    /* BIGGER AND BOLDER TAB TEXT */
+    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+        font-size: 22px !important;
+        font-weight: 800 !important; 
+    }
     /* Smaller, cleaner header text */
     .header-box {
         background-color: #f1f3f6;
@@ -68,7 +73,8 @@ st.title("Machine Learning Assignment-2 : Fouzan Ashraf")
 st.markdown("### Classification Model Deployment & Evaluation Dashboard")
 
 # --- 2. DATA LOADING & TARGET SELECTION ---
-st.header("1. Data Configuration")
+# Renamed from "1. Data Configuration"
+st.header("Data Upload/Load")
 data_source = st.radio("Select Data Source", ["Upload Your Own CSV", "Use Preloaded GitHub Repository Dataset (data.csv)"], horizontal=True)
 
 df = None
@@ -83,7 +89,7 @@ elif data_source == "Upload Your Own CSV":
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
 
-# --- IN-BODY TARGET SELECTION (Moved from Sidebar) ---
+# --- IN-BODY TARGET SELECTION ---
 target_col = None
 if df is not None:
     # Cleanup
@@ -100,10 +106,10 @@ if df is not None:
     X = df.drop(columns=[target_col])
     y = df[target_col]
     le = LabelEncoder()
-    try: y = le.fit_transform(y)
-    except: pass
+    try: y_encoded = le.fit_transform(y)
+    except: y_encoded = y
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
@@ -123,6 +129,23 @@ if df is not None:
         s4.metric("Duplicate Rows", df.duplicated().sum())
 
         st.markdown(f"**Original Data Shape:** `{df.shape}`")
+        
+        # --- NEW: Explicit Malignant / Benign Counts ---
+        st.markdown(f"**Target Class Distribution ({target_col}):**")
+        class_counts = df[target_col].value_counts()
+        
+        # Dynamically create columns based on the number of classes
+        count_cols = st.columns(len(class_counts))
+        for i, (cls_name, count) in enumerate(class_counts.items()):
+            label = str(cls_name)
+            # Map 'M' and 'B' for clearer UI if present
+            if label.upper() == 'M': label = "Malignant (M)"
+            if label.upper() == 'B': label = "Benign (B)"
+            
+            pct = (count / df.shape[0]) * 100
+            count_cols[i].metric(f"Class: {label}", f"{count} ({pct:.1f}%)")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
         
         c_da1, c_da2 = st.columns([1, 1])
         with c_da1:
@@ -162,8 +185,8 @@ if df is not None:
                 m1, m2, m3, m4, m5, m6 = st.columns(6)
                 m1.metric("Accuracy", f"{accuracy_score(y_test, y_pred):.4f}")
                 m2.metric("AUC", f"{roc_auc_score(y_test, y_prob):.4f}")
-                m3.metric("Precision", f"{precision_score(y_test, y_pred, average='weighted'):.4f}")
-                m4.metric("Recall", f"{recall_score(y_test, y_pred, average='weighted'):.4f}")
+                m3.metric("Precision", f"{precision_score(y_test, y_pred, average='weighted', zero_division=0):.4f}")
+                m4.metric("Recall", f"{recall_score(y_test, y_pred, average='weighted', zero_division=0):.4f}")
                 m5.metric("F1 Score", f"{f1_score(y_test, y_pred, average='weighted'):.4f}")
                 m6.metric("MCC Score", f"{matthews_corrcoef(y_test, y_pred):.4f}")
 
@@ -207,15 +230,24 @@ if df is not None:
                     m.fit(X_train_scaled, y_train)
                     p = m.predict(X_test_scaled)
                     prob = m.predict_proba(X_test_scaled)[:, 1] if hasattr(m, "predict_proba") else p
+                    
+                    # Added Precision and Recall to the tracking list
                     comp_results.append({
-                        "Model": name, "Accuracy": accuracy_score(y_test, p),
-                        "AUC": roc_auc_score(y_test, prob), "F1": f1_score(y_test, p, average='weighted'),
+                        "Model": name, 
+                        "Accuracy": accuracy_score(y_test, p),
+                        "AUC": roc_auc_score(y_test, prob), 
+                        "Precision": precision_score(y_test, p, average='weighted', zero_division=0),
+                        "Recall": recall_score(y_test, p, average='weighted', zero_division=0),
+                        "F1 Score": f1_score(y_test, p, average='weighted'),
                         "MCC": matthews_corrcoef(y_test, p)
                     })
                 
                 res_df = pd.DataFrame(comp_results)
                 st.subheader("🏆 Comparative Leaderboard")
-                st.dataframe(res_df.style.highlight_max(axis=0, color='lightgreen'), use_container_width=True)
+                st.dataframe(res_df.style.highlight_max(axis=0, color='lightgreen').format(
+                    {"Accuracy": "{:.4f}", "AUC": "{:.4f}", "Precision": "{:.4f}", 
+                     "Recall": "{:.4f}", "F1 Score": "{:.4f}", "MCC": "{:.4f}"}), 
+                    use_container_width=True)
                 
                 # Visual Comparison
                 fig_bar, ax_bar = plt.subplots(figsize=(10, 5))
@@ -223,9 +255,19 @@ if df is not None:
                 plt.title("Model Accuracy Benchmarking")
                 st.pyplot(fig_bar)
                 
-                # Generic Observations based on current data
-                best_m = res_df.loc[res_df['Accuracy'].idxmax(), 'Model']
-                st.info(f"**Observations:** On this dataset, **{best_m}** is the top performer. Models like Logistic Regression and Naive Bayes excel due to the feature distribution.")
+                # Dynamic and Expanded Observations
+                best_acc = res_df.loc[res_df['Accuracy'].idxmax(), 'Model']
+                best_rec = res_df.loc[res_df['Recall'].idxmax(), 'Model']
+                best_f1 = res_df.loc[res_df['F1 Score'].idxmax(), 'Model']
+                
+                obs_text = f"""
+                **💡 Key Observations on Current Data:**
+                * **Highest Accuracy:** The **{best_acc}** model is the top overall performer in raw accuracy.
+                * **Best Recall (Safety):** **{best_rec}** achieved the highest recall. For medical diagnosis datasets, maximizing recall is usually the priority to minimize false negatives (i.e., missing a malignant diagnosis).
+                * **Best Balance (F1 Score):** **{best_f1}** leads in the F1 Score, indicating it handles the trade-off between Precision (false alarms) and Recall (missed diagnoses) the best.
+                * *General Insight: Linear models (like Logistic Regression) often excel as strong baselines on standardized medical data, while ensemble methods (Random Forest, XGBoost) tend to win when feature relationships are highly non-linear.*
+                """
+                st.info(obs_text)
 
 else:
     st.info("Please select a data source or upload a file to begin the analysis.")
