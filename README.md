@@ -3,10 +3,10 @@
 ## a. Problem Statement
 The objective of this assignment is to implement an end-to-end Machine Learning classification workflow. This involves:
 1.  Selecting a real-world classification dataset.
-2.  Implementing and training 6 different classification models (Linear, Tree-based, Instance-based, Probabilistic, and Ensembles).
+2.  Implementing and training 6 different classification models (Logistic Regression, Decision Tree Classifier(DNN), K-Nearest Neighbor Classifier (KNN), Naive Bayes Classifier, Ensemble Model - Random Forest and Ensemble Model - XGBoost).
 3.  Evaluating models using standard metrics (Accuracy, Precision, Recall, F1 Score, AUC, MCC).
 4.  Developing an interactive web application using **Streamlit** to demonstrate the models.
-5.  Deploying the application to the cloud for public access.
+5.  Deploying the application to the Streamlit Community Cloud for public access.
 
 ## b. Dataset Description
 * **Dataset Name:** Breast Cancer Wisconsin (Diagnostic) Dataset
@@ -14,7 +14,8 @@ The objective of this assignment is to implement an end-to-end Machine Learning 
 * **Description:** The dataset predicts whether a breast mass is **benign (B)** or **malignant (M)** based on 30 features computed from a digitized image of a fine needle aspirate (FNA) of a breast mass.
 * **Target Variable:** `Diagnosis`
 * **Instances:** 569 samples (Class distribution: 357 Benign, 212 Malignant)
-* **Features:** 30 numeric features (radius, texture, perimeter, area, smoothness, etc.) + 1 Target variable.
+* **Features:** 30 numeric features (radius, texture, perimeter, area, smoothness, etc.) + 1 Target variable
+* **Original Data Shape:** 569*32
 
 ## c. Models used
 ### Comparison Table with Evaluation Metrics
@@ -76,7 +77,7 @@ The objective of this assignment is to implement an end-to-end Machine Learning 
 ### Steps to Build Locally:
 1. **Clone the GitHub repository**
    ```bash
-   git clone [https://github.com/fouzan-ashraf/2025AB05236-FOUZAN-ASHRAF-MACHINE-LEARNING-ASSIGNMENT-2.git](https://github.com/fouzan-ashraf/2025AB05236-FOUZAN-ASHRAF-MACHINE-LEARNING-ASSIGNMENT-2.git)
+   git clone https://github.com/fouzan-ashraf/2025AB05236-FOUZAN-ASHRAF-MACHINE-LEARNING-ASSIGNMENT-2.git](https://github.com/fouzan-ashraf/2025AB05236-FOUZAN-ASHRAF-MACHINE-LEARNING-ASSIGNMENT-2.git
    cd 2025AB05236-FOUZAN-ASHRAF-MACHINE-LEARNING-ASSIGNMENT-2
    ```
 
@@ -86,7 +87,7 @@ The objective of this assignment is to implement an end-to-end Machine Learning 
    ```
 
 3. **Download the Dataset**
-   Download the dataset manually from Kaggle (https://www.kaggle.com/datasets/uciml/breast-cancer-wisconsin-data) and save it as `data.csv` in the project root.
+   Download the dataset manually from Kaggle (https://www.kaggle.com/datasets/uciml/breast-cancer-wisconsin-data) and save it as `data.csv` in the project root (Already downloaded and saved in GitHub project root).
 
 4. **Train the models**
    ```bash
