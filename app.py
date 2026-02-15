@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 import os
+import streamlit.components.v1 as components
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (accuracy_score, roc_auc_score, precision_score, 
                              recall_score, f1_score, matthews_corrcoef, 
@@ -214,7 +215,7 @@ with tab2:
         st.dataframe(new_test_df.head(5), use_container_width=True)
 
     st.markdown("---")
-    
+
     # --- 3. RUN EVALUATION & PREDICTION (Always Visible) ---
     st.subheader("3. Run Evaluation / Predictions")
     
@@ -224,12 +225,25 @@ with tab2:
     models_to_test = ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"]
     inference_mode = st.radio("Select Inference Mode:", ["Evaluate Single Model", "Compare All Models"], horizontal=True)
 
+    # --- HELPER FUNCTION FOR AUTO-SCROLL ---
+    def scroll_to_bottom():
+        components.html(
+            """
+            <script>
+                var main = window.parent.document.querySelector('.main');
+                main.scrollTo({top: main.scrollHeight, behavior: 'smooth'});
+            </script>
+            """,
+            height=0
+        )
+
     # --- SINGLE MODEL EVALUATION / PREDICTION ---
     if inference_mode == "Evaluate Single Model":
         inf_model_name = st.selectbox("Select Model for Inference", models_to_test)
         if st.button("🧠 Run Inference", type="primary"):
             if new_test_df is None:
-                st.warning("⚠️ Cannot run inference. Please provide data first.")
+                st.error("⚠️ Cannot run inference. Please provide data first.")
+                st.toast("Missing data!", icon="⚠️")
             else:
                 try:
                     loaded_scaler = joblib.load('model/scaler.pkl')
@@ -237,7 +251,6 @@ with tab2:
                     safe_name = inf_model_name.replace(" ", "_")
                     loaded_model = joblib.load(f'model/{safe_name}_model.pkl')
 
-                    # CHECK FOR PREDICTION MODE VS EVALUATION MODE
                     is_evaluation = target_col in new_test_df.columns
 
                     if is_evaluation:
@@ -251,6 +264,8 @@ with tab2:
                             p = loaded_model.predict(X_new_scaled)
                             prob = loaded_model.predict_proba(X_new_scaled)[:, 1] if hasattr(loaded_model, "predict_proba") else p
 
+                            st.toast("Evaluation Complete! Scrolling to results...", icon="✅")
+                            
                             st.markdown(f"#### Evaluation Results for {inf_model_name}")
                             m1, m2, m3, m4, m5, m6 = st.columns(6)
                             m1.metric("Accuracy", f"{accuracy_score(y_new, p):.4f}")
@@ -275,6 +290,8 @@ with tab2:
                             fig_roc, ax_roc = plt.subplots(figsize=(6, 4))
                             RocCurveDisplay.from_predictions(y_new, prob, ax=ax_roc, name=inf_model_name)
                             st.pyplot(fig_roc)
+                            
+                            scroll_to_bottom() # Trigger auto-scroll
 
                     else:
                         # --- BLIND PREDICTION MODE ---
@@ -287,23 +304,29 @@ with tab2:
                             results_df = new_test_df.copy()
                             results_df.insert(0, 'Predicted_Diagnosis', decoded_predictions)
                             
+                            st.toast("Predictions Generated! Scrolling to results...", icon="✅")
                             st.success(f"Predictions generated successfully using {inf_model_name}!")
                             st.write("**Prediction Results (First 10 Rows):**")
                             st.dataframe(results_df.head(10), use_container_width=True)
                             
                             csv_preds = results_df.to_csv(index=False).encode('utf-8')
                             st.download_button(label="⬇️ Download Full Predictions as CSV", data=csv_preds, file_name=f"{safe_name}_predictions.csv", mime="text/csv")
+                            
+                            scroll_to_bottom() # Trigger auto-scroll
 
                 except FileNotFoundError as e:
                     st.error(f"⚠️ Required pre-trained file not found. Ensure models and preprocessors exist in 'model/'. Error: {e}")
+                    st.toast("File missing error.", icon="❌")
 
     # --- ALL MODELS COMPARISON ---
     else:
         if st.button("🔥 Run All-Model Comparison", type="primary"):
             if new_test_df is None:
-                st.warning("⚠️ Cannot run evaluation. Please provide test data first.")
+                st.error("⚠️ Cannot run evaluation. Please provide test data first.")
+                st.toast("Missing data!", icon="⚠️")
             elif target_col not in new_test_df.columns:
                 st.error("⚠️ Blind prediction mode (missing target column) is only supported in 'Evaluate Single Model'. To compare accuracy across models, the dataset must contain the 'diagnosis' column so we can check the answers.")
+                st.toast("Incompatible Mode!", icon="❌")
             else:
                 inf_results = []
                 try:
@@ -333,6 +356,7 @@ with tab2:
                                 st.warning(f"⚠️ {name} model not found in model/. Skipping.")
 
                         if inf_results:
+                            st.toast("Comparison Complete! Scrolling down...", icon="🏆")
                             res_df_new = pd.DataFrame(inf_results)
                             st.subheader("🏆 Inference Leaderboard")
                             st.dataframe(res_df_new.style.highlight_max(axis=0, color='lightgreen').format(
@@ -355,6 +379,8 @@ with tab2:
                             * **Best Balance (F1 Score):** **{best_f1}** leads in the F1 Score, indicating it handles the trade-off between false alarms (Precision) and missed diagnoses (Recall) the best.
                             """
                             st.info(obs_text)
+                            
+                            scroll_to_bottom() # Trigger auto-scroll
 
                 except FileNotFoundError:
                     st.error("⚠️ Preprocessor files ('scaler.pkl' or 'label_encoder.pkl') not found in 'model/' directory.")
