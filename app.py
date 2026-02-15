@@ -182,61 +182,87 @@ with tab2:
         st.dataframe(new_test_df.head(5), use_container_width=True)
 
     st.markdown("---")
-    
-    # --- 3. RUN EVALUATION (Always Visible) ---
+   
+   # --- 3. RUN EVALUATION & PREDICTION (Always Visible) ---
     st.subheader("3. Run Evaluation / Predictions")
-    
+
     if new_test_df is None:
         st.info("ℹ️ Please upload a test dataset or select 'Load Test Data from GitHub' above to enable predictions.")
-        
+
     models_to_test = ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"]
     inference_mode = st.radio("Select Inference Mode:", ["Evaluate Single Model", "Compare All Models"], horizontal=True)
 
-    # --- SINGLE MODEL EVALUATION ---
+    # --- SINGLE MODEL EVALUATION / PREDICTION ---
     if inference_mode == "Evaluate Single Model":
         inf_model_name = st.selectbox("Select Model for Inference", models_to_test)
         if st.button("🧠 Run Inference", type="primary"):
             if new_test_df is None:
                 st.warning("⚠️ Cannot run evaluation. Please provide test data first.")
-            elif target_col not in new_test_df.columns:
-                st.error(f"⚠️ Dataset must contain target column: '{target_col}'")
             else:
                 try:
-                    # LOAD PREPROCESSORS
                     loaded_scaler = joblib.load('model/scaler.pkl')
                     loaded_le = joblib.load('model/label_encoder.pkl')
-
-                    # PREPARE DATA
-                    X_new = new_test_df.drop(columns=[target_col])
-                    y_new_raw = new_test_df[target_col]
-                    y_new = loaded_le.transform(y_new_raw)
-                    X_new_scaled = loaded_scaler.transform(X_new)
-
                     safe_name = inf_model_name.replace(" ", "_")
                     loaded_model = joblib.load(f'model/{safe_name}_model.pkl')
-                    
-                    with st.spinner("Predicting..."):
-                        p = loaded_model.predict(X_new_scaled)
-                        prob = loaded_model.predict_proba(X_new_scaled)[:, 1] if hasattr(loaded_model, "predict_proba") else p
 
-                        st.markdown(f"#### Results for {inf_model_name}")
-                        m1, m2, m3, m4, m5, m6 = st.columns(6)
-                        m1.metric("Accuracy", f"{accuracy_score(y_new, p):.4f}")
-                        m2.metric("AUC", f"{roc_auc_score(y_new, prob):.4f}")
-                        m3.metric("Precision", f"{precision_score(y_new, p, average='weighted', zero_division=0):.4f}")
-                        m4.metric("Recall", f"{recall_score(y_new, p, average='weighted', zero_division=0):.4f}")
-                        m5.metric("F1 Score", f"{f1_score(y_new, p, average='weighted'):.4f}")
-                        m6.metric("MCC Score", f"{matthews_corrcoef(y_new, p):.4f}")
+                    # CHECK FOR PREDICTION MODE VS EVALUATION MODE
+                    is_evaluation = target_col in new_test_df.columns
 
-                        v1, v2 = st.columns(2)
-                        with v1:
-                            st.write("**Confusion Matrix**")
-                            fig_cm_new, ax_cm_new = plt.subplots(figsize=(4, 3))
-                            sns.heatmap(confusion_matrix(y_new, p), annot=True, fmt='d', cmap='Blues', ax=ax_cm_new)
-                            st.pyplot(fig_cm_new)
-                        with v2:
-                            st.write("**Classification Report**")
-                            st.dataframe(pd.DataFrame(classification_report(y_new, p, target_names=loaded_le.classes_, output_dict=True)).T.style.format("{:.4f}"))
+                    if is_evaluation:
+                        # --- EVALUATION MODE ---
+                        X_new = new_test_df.drop(columns=[target_col])
+                        y_new_raw = new_test_df[target_col]
+                        y_new = loaded_le.transform(y_new_raw)
+                        X_new_scaled = loaded_scaler.transform(X_new)
+
+                        with st.spinner("Evaluating model..."):
+                            p = loaded_model.predict(X_new_scaled)
+                            prob = loaded_model.predict_proba(X_new_scaled)[:, 1] if hasattr(loaded_model, "predict_proba") else p
+
+                            st.markdown(f"#### Evaluation Results for {inf_model_name}")
+                            m1, m2, m3, m4, m5, m6 = st.columns(6)
+                            m1.metric("Accuracy", f"{accuracy_score(y_new, p):.4f}")
+                            m2.metric("AUC", f"{roc_auc_score(y_new, prob):.4f}")
+                            m3.metric("Precision", f"{precision_score(y_new, p, average='weighted', zero_division=0):.4f}")
+                            m4.metric("Recall", f"{recall_score(y_new, p, average='weighted', zero_division=0):.4f}")
+                            m5.metric("F1 Score", f"{f1_score(y_new, p, average='weighted'):.4f}")
+                            m6.metric("MCC Score", f"{matthews_corrcoef(y_new, p):.4f}")
+
+                            v1, v2 = st.columns(2)
+                            with v1:
+                                st.write("**Confusion Matrix**")
+                                fig_cm_new, ax_cm_new = plt.subplots(figsize=(4, 3))
+                                sns.heatmap(confusion_matrix(y_new, p), annot=True, fmt='d', cmap='Blues', ax=ax_cm_new)
+                                st.pyplot(fig_cm_new)
+                            with v2:
+                                st.write("**Classification Report**")
+                                st.dataframe(pd.DataFrame(classification_report(y_new, p, target_names=loaded_le.classes_, output_dict=True)).T.style.format("{:.4f}"))
+
+                            # Replaced Convergence Graph with ROC Curve for Inference
+                            st.write("**Receiver Operating Characteristic (ROC) Curve**")
+                            from sklearn.metrics import RocCurveDisplay
+                            fig_roc, ax_roc = plt.subplots(figsize=(6, 4))
+                            RocCurveDisplay.from_predictions(y_new, prob, ax=ax_roc, name=inf_model_name)
+                            st.pyplot(fig_roc)
+
+                    else:
+                        # --- BLIND PREDICTION MODE ---
+                        X_new_scaled = loaded_scaler.transform(new_test_df)
+
+                        with st.spinner("Generating Predictions for Unseen Data..."):
+                            predictions = loaded_model.predict(X_new_scaled)
+                            decoded_predictions = loaded_le.inverse_transform(predictions)
+
+                            # Create a display dataframe
+                            results_df = new_test_df.copy()
+                            results_df.insert(0, 'Predicted_Diagnosis', decoded_predictions)
+
+                            st.success(f"Predictions generated successfully using {inf_model_name}!")
+                            st.write("**Prediction Results:**")
+                            st.dataframe(results_df, use_container_width=True)
+
+                            csv_preds = results_df.to_csv(index=False).encode('utf-8')
+                            st.download_button(label="⬇️ Download Predictions as CSV", data=csv_preds, file_name=f"{safe_name}_predictions.csv", mime="text/csv")
 
                 except FileNotFoundError as e:
                     st.error(f"⚠️ Required pre-trained file not found. Ensure models and preprocessors exist in 'model/'. Error: {e}")
@@ -247,15 +273,13 @@ with tab2:
             if new_test_df is None:
                 st.warning("⚠️ Cannot run evaluation. Please provide test data first.")
             elif target_col not in new_test_df.columns:
-                st.error(f"⚠️ Dataset must contain target column: '{target_col}'")
+                st.error("⚠️ Blind prediction mode (missing target column) is only supported in 'Evaluate Single Model'. To compare accuracy across models, the dataset must contain the 'diagnosis' column.")
             else:
                 inf_results = []
                 try:
-                    # LOAD PREPROCESSORS
                     loaded_scaler = joblib.load('model/scaler.pkl')
                     loaded_le = joblib.load('model/label_encoder.pkl')
 
-                    # PREPARE DATA
                     X_new = new_test_df.drop(columns=[target_col])
                     y_new_raw = new_test_df[target_col]
                     y_new = loaded_le.transform(y_new_raw)
@@ -289,6 +313,19 @@ with tab2:
                             sns.barplot(x="Accuracy", y="Model", data=res_df_new, palette="viridis")
                             plt.title("Model Accuracy on Unseen Test Data")
                             st.pyplot(fig_bar)
+
+                            # --- DETAILED OBSERVATIONS ADDED BACK ---
+                            best_acc = res_df_new.loc[res_df_new['Accuracy'].idxmax(), 'Model']
+                            best_rec = res_df_new.loc[res_df_new['Recall'].idxmax(), 'Model']
+                            best_f1 = res_df_new.loc[res_df_new['F1 Score'].idxmax(), 'Model']
+
+                            obs_text = f"""
+                            **💡 Key Observations on Holdout Test Data:**
+                            * **Highest Overall Accuracy:** The **{best_acc}** model is the top performer in raw accuracy on this unseen data.
+                            * **Best for Safety (Recall):** In medical diagnostics, minimizing false negatives (missing a cancer diagnosis) is critical. **{best_rec}** achieved the highest recall, making it the safest model for initial screening.
+                            * **Best Balance (F1 Score):** **{best_f1}** leads in the F1 Score, indicating it handles the trade-off between false alarms (Precision) and missed diagnoses (Recall) the best.
+                            """
+                            st.info(obs_text)
 
                 except FileNotFoundError:
                     st.error("⚠️ Preprocessor files ('scaler.pkl' or 'label_encoder.pkl') not found in 'model/' directory.")
